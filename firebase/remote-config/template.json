@@ -1,0 +1,34 @@
+{
+  "parameters": {
+    "documents_ai": {
+      "defaultValue": {
+        "value": "true"
+      },
+      "description": "Ativa processamento de OCR e extração estruturada de documentos via Document AI / Gemini"
+    },
+    "realtime_presence": {
+      "defaultValue": {
+        "value": "true"
+      },
+      "description": "Exibe indicadores de presença e edição colaborativa em tempo real"
+    },
+    "assistant": {
+      "defaultValue": {
+        "value": "true"
+      },
+      "description": "Assistente operacional de análise de crédito e consistência de dados"
+    },
+    "advanced_maps": {
+      "defaultValue": {
+        "value": "true"
+      },
+      "description": "Recursos avançados de geolocalização e visualização de propriedades no Google Maps"
+    },
+    "new_financing_ui": {
+      "defaultValue": {
+        "value": "true"
+      },
+      "description": "Nova interface interativa da Tabela SAC e comparador de capacidade de pagamento"
+    }
+  }
+}
