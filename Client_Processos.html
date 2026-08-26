@@ -1,0 +1,1216 @@
+<script>
+
+  let processosDisponiveis = [];
+
+
+  function registrarEventosProcessos() {
+
+    document
+      .getElementById(
+        'formProcesso'
+      )
+      .addEventListener(
+        'submit',
+        salvarProcesso
+      );
+
+
+    document
+      .getElementById(
+        'beneficiarioProcesso'
+      )
+      .addEventListener(
+        'change',
+        atualizarSelectPropriedadesProcesso
+      );
+
+
+    document
+      .getElementById(
+        'buscaProcessos'
+      )
+      .addEventListener(
+        'input',
+        filtrarProcessos
+      );
+
+  }
+
+
+  function atualizarSelectPropriedadesProcesso() {
+
+    const beneficiario =
+      document.getElementById(
+        'beneficiarioProcesso'
+      );
+
+
+    const select =
+      document.getElementById(
+        'propriedadeProcesso'
+      );
+
+
+    const acao =
+      document.getElementById(
+        'acaoSemPropriedade'
+      );
+
+
+    if (
+      !beneficiario ||
+      !select
+    ) {
+      return;
+    }
+
+
+    const beneficiarioId =
+      beneficiario.value;
+
+
+    acao.hidden =
+      true;
+
+
+    if (!beneficiarioId) {
+
+      select.disabled =
+        true;
+
+
+      select.innerHTML = `
+        <option value="">
+          Selecione primeiro o beneficiário...
+        </option>
+      `;
+
+
+      return;
+    }
+
+
+    const propriedades =
+      propriedadesDisponiveis
+        .filter(
+          item =>
+            item.beneficiarioId ===
+            beneficiarioId
+        );
+
+
+    if (!propriedades.length) {
+
+      select.disabled =
+        true;
+
+
+      select.innerHTML = `
+        <option value="">
+          Nenhuma propriedade cadastrada
+        </option>
+      `;
+
+
+      acao.hidden =
+        false;
+
+
+      return;
+    }
+
+
+    select.disabled =
+      false;
+
+
+    select.innerHTML = `
+      <option value="">
+        Selecione...
+      </option>
+    `;
+
+
+    propriedades.forEach(
+      propriedade => {
+
+        const option =
+          document.createElement(
+            'option'
+          );
+
+
+        option.value =
+          propriedade.id;
+
+
+        option.textContent =
+          `${propriedade.denominacao} — ${propriedade.municipio}/RR`;
+
+
+        select.appendChild(
+          option
+        );
+
+      }
+    );
+
+  }
+
+
+  function cadastrarPropriedadeParaBeneficiarioAtual() {
+
+    const beneficiarioId =
+      document
+        .getElementById(
+          'beneficiarioProcesso'
+        )
+        .value;
+
+
+    if (!beneficiarioId) {
+      return;
+    }
+
+
+    if (
+      !abrirPagina(
+        'propriedades'
+      )
+    ) {
+      return;
+    }
+
+
+    const select =
+      document.getElementById(
+        'beneficiarioPropriedade'
+      );
+
+
+    select.disabled =
+      false;
+
+
+    select.value =
+      beneficiarioId;
+
+
+    document
+      .getElementById(
+        'cardFormularioPropriedade'
+      )
+      .scrollIntoView({
+        behavior:
+          'smooth'
+      });
+
+  }
+
+
+  function salvarProcesso(
+    event
+  ) {
+
+    event.preventDefault();
+
+
+    const form =
+      document.getElementById(
+        'formProcesso'
+      );
+
+
+    const botao =
+      document.getElementById(
+        'btnSalvarProcesso'
+      );
+
+
+    const mensagem =
+      document.getElementById(
+        'mensagemProcesso'
+      );
+
+
+    const dados = {
+
+      beneficiarioId:
+        document
+          .getElementById(
+            'beneficiarioProcesso'
+          )
+          .value,
+
+      propriedadeId:
+        document
+          .getElementById(
+            'propriedadeProcesso'
+          )
+          .value,
+
+      data:
+        document
+          .getElementById(
+            'dataProcesso'
+          )
+          .value,
+
+      atividade:
+        document
+          .getElementById(
+            'atividadeProcesso'
+          )
+          .value
+    };
+
+
+    botao.disabled =
+      true;
+
+
+    mensagem.className =
+      'message loading';
+
+
+    mensagem.textContent =
+      'Criando processo...';
+
+
+    google.script.run
+
+      .withSuccessHandler(
+        processo => {
+
+          marcarFormularioSalvo();
+
+
+          form.reset();
+
+
+          definirDataHoje();
+
+
+          atualizarSelectPropriedadesProcesso();
+
+
+          mensagem.className =
+            'message sucesso';
+
+
+          mensagem.textContent =
+            `Processo ${processo.numero} criado com sucesso.`;
+
+
+          botao.disabled =
+            false;
+
+
+          carregarProcessos();
+
+
+          abrirProcesso(
+            processo.id
+          );
+
+        }
+      )
+
+      .withFailureHandler(
+        erro => {
+
+          mensagem.className =
+            'message erro';
+
+
+          mensagem.textContent =
+            erro.message ||
+            String(erro);
+
+
+          botao.disabled =
+            false;
+
+        }
+      )
+
+      .salvarProposta(
+        dados
+      );
+
+  }
+
+
+  function carregarProcessos() {
+
+    google.script.run
+
+      .withSuccessHandler(
+        processos => {
+
+          processosDisponiveis =
+            processos;
+
+
+          renderizarProcessos(
+            processos
+          );
+
+        }
+      )
+
+      .withFailureHandler(
+        erro => {
+
+          document
+            .getElementById(
+              'listaProcessos'
+            )
+            .innerHTML = `
+              <div class="erro">
+                ${escaparHtml(
+                  erro.message ||
+                  String(erro)
+                )}
+              </div>
+            `;
+
+        }
+      )
+
+      .listarPropostas();
+
+  }
+
+
+  function filtrarProcessos() {
+
+    const termo =
+      normalizarBusca(
+        document
+          .getElementById(
+            'buscaProcessos'
+          )
+          .value
+      );
+
+
+    const resultado =
+      processosDisponiveis
+        .filter(
+          item => {
+
+            const texto =
+              normalizarBusca([
+                item.numero,
+                item.beneficiarioNome,
+                item.beneficiarioCpf,
+                item.propriedadeNome,
+                item.propriedadeMunicipio,
+                item.atividade,
+                item.status
+              ].join(' '));
+
+
+            return (
+              !termo ||
+              texto.includes(
+                termo
+              )
+            );
+
+          }
+        );
+
+
+    renderizarProcessos(
+      resultado
+    );
+
+  }
+
+
+  function renderizarProcessos(
+    processos
+  ) {
+
+    const container =
+      document.getElementById(
+        'listaProcessos'
+      );
+
+
+    if (!processos.length) {
+
+      container.innerHTML = `
+        <div class="empty">
+          Nenhum processo encontrado.
+        </div>
+      `;
+
+      return;
+    }
+
+
+    const linhas =
+      processos
+        .map(
+          processo => `
+            <tr
+              class="clickable"
+              onclick="abrirProcesso('${escaparAtributo(processo.id)}')"
+            >
+
+              <td>
+                <strong>
+                  ${escaparHtml(processo.numero)}
+                </strong>
+              </td>
+
+              <td>
+                ${escaparHtml(processo.beneficiarioNome)}
+              </td>
+
+              <td>
+                ${escaparHtml(
+                  processo.propriedadeNome ||
+                  'Não vinculada'
+                )}
+              </td>
+
+              <td>
+                ${escaparHtml(processo.atividade)}
+              </td>
+
+              <td>
+                ${escaparHtml(processo.data)}
+              </td>
+
+              <td>
+                <span class="status">
+                  ${escaparHtml(processo.status)}
+                </span>
+              </td>
+
+            </tr>
+          `
+        )
+        .join('');
+
+
+    container.innerHTML = `
+
+      <div class="table-wrapper">
+
+        <table>
+
+          <thead>
+
+            <tr>
+              <th>Processo</th>
+              <th>Beneficiário</th>
+              <th>Propriedade</th>
+              <th>Atividade</th>
+              <th>Data</th>
+              <th>Status</th>
+            </tr>
+
+          </thead>
+
+          <tbody>
+            ${linhas}
+          </tbody>
+
+        </table>
+
+      </div>
+
+    `;
+
+  }
+
+
+  function abrirProcesso(
+    id
+  ) {
+
+    if (
+      !confirmarDescartarAlteracoes()
+    ) {
+      return;
+    }
+
+
+    processoAtualId =
+      id;
+
+
+    const painel =
+      document.getElementById(
+        'painelProcesso'
+      );
+
+
+    painel.style.display =
+      'block';
+
+
+    document
+      .getElementById(
+        'processoNumero'
+      )
+      .textContent =
+        'Carregando...';
+
+
+    google.script.run
+
+      .withSuccessHandler(
+        renderizarProcesso
+      )
+
+      .withFailureHandler(
+        erro => {
+
+          document
+            .getElementById(
+              'processoNumero'
+            )
+            .textContent =
+              'Erro ao carregar processo';
+
+
+          document
+            .getElementById(
+              'processoSubtitulo'
+            )
+            .textContent =
+              erro.message ||
+              String(erro);
+
+        }
+      )
+
+      .buscarProposta(
+        id
+      );
+
+  }
+
+
+  function renderizarProcesso(
+    processo
+  ) {
+
+    processoAtualId =
+      processo.id;
+
+
+    document
+      .getElementById(
+        'processoNumero'
+      )
+      .textContent =
+        `Processo ${processo.numero}`;
+
+
+    document
+      .getElementById(
+        'processoSubtitulo'
+      )
+      .textContent =
+        processo.beneficiarioNome;
+
+
+    document
+      .getElementById(
+        'processoStatus'
+      )
+      .textContent =
+        processo.status;
+
+
+    document
+      .getElementById(
+        'processoInformacoes'
+      )
+      .innerHTML = `
+
+        ${detalhe(
+          'CPF',
+          formatarCpf(
+            processo.beneficiarioCpf
+          )
+        )}
+
+        ${detalhe(
+          'Propriedade',
+          processo.propriedadeNome ||
+          'Não vinculada'
+        )}
+
+        ${detalhe(
+          'Município',
+          processo.propriedadeMunicipio ||
+          ''
+        )}
+
+        ${detalhe(
+          'Atividade',
+          processo.atividade
+        )}
+
+        ${detalhe(
+          'Data do processo',
+          processo.data
+        )}
+
+      `;
+
+
+    document
+      .getElementById(
+        'processoAtalhos'
+      )
+      .innerHTML = `
+
+        <button
+          type="button"
+          class="secondary"
+          onclick="editarBeneficiarioDoProcesso('${escaparAtributo(processo.beneficiarioId)}')"
+        >
+          Editar beneficiário
+        </button>
+
+        ${
+          processo.propriedadeId
+            ? `
+              <button
+                type="button"
+                class="secondary"
+                onclick="editarPropriedadeDoProcesso('${escaparAtributo(processo.propriedadeId)}')"
+              >
+                Editar propriedade
+              </button>
+            `
+            : ''
+        }
+
+      `;
+
+
+    renderizarEtapasProcesso(
+      processo
+    );
+
+
+    marcarFormularioSalvo();
+
+
+    document
+      .getElementById(
+        'painelProcesso'
+      )
+      .scrollIntoView({
+        behavior:
+          'smooth',
+
+        block:
+          'start'
+      });
+
+  }
+
+
+  function editarBeneficiarioDoProcesso(
+    id
+  ) {
+
+    if (
+      !abrirPagina(
+        'beneficiarios'
+      )
+    ) {
+      return;
+    }
+
+
+    editarBeneficiario(
+      id
+    );
+
+  }
+
+
+  function editarPropriedadeDoProcesso(
+    id
+  ) {
+
+    if (
+      !abrirPagina(
+        'propriedades'
+      )
+    ) {
+      return;
+    }
+
+
+    editarPropriedade(
+      id
+    );
+
+  }
+
+
+  function renderizarEtapasProcesso(
+  processo
+) {
+
+  function interpretarEtapa(
+    status,
+    percentual
+  ) {
+
+    switch (
+      status
+    ) {
+
+      case 'CONCLUIDO':
+
+        return {
+          estado:
+            'concluida',
+
+          texto:
+            'Concluído',
+
+          highlight:
+            'success'
+        };
+
+
+      case 'EM_REVISAO':
+
+        return {
+          estado:
+            'incompleta',
+
+          texto:
+            'Em revisão',
+
+          highlight:
+            'warning'
+        };
+
+
+      case 'RASCUNHO':
+
+        return {
+          estado:
+            'incompleta',
+
+          texto:
+            `Rascunho • ${percentual || 0}%`,
+
+          highlight:
+            'warning'
+        };
+
+
+      default:
+
+        return {
+          estado:
+            'pendente',
+
+          texto:
+            'Pendente',
+
+          highlight:
+            ''
+        };
+
+    }
+
+  }
+
+
+  const patrimonio =
+    interpretarEtapa(
+      processo.patrimonioStatus,
+      processo.patrimonioPercentual
+    );
+
+
+  const identificacao =
+    interpretarEtapa(
+      processo.identificacaoStatus,
+      processo.identificacaoPercentual
+    );
+
+
+  const fluxoCaixa =
+    interpretarEtapa(
+      processo.fluxoCaixaStatus,
+      processo.fluxoCaixaPercentual
+    );
+
+
+  const financiamento =
+    interpretarEtapa(
+      processo.financiamentoStatus,
+      processo.financiamentoPercentual
+    );
+
+
+  const etapas = [
+
+    {
+      nome:
+        'Dados gerais',
+
+      estado:
+        'concluida',
+
+      texto:
+        'Concluído',
+
+      highlight:
+        'success'
+    },
+
+
+    {
+      nome:
+        'Beneficiário',
+
+      estado:
+        processo.beneficiarioCompleto
+          ? 'concluida'
+          : 'incompleta',
+
+      texto:
+        processo.beneficiarioCompleto
+          ? 'Concluído'
+          : `Incompleto • ${processo.beneficiarioPercentual}%`,
+
+      highlight:
+        processo.beneficiarioCompleto
+          ? 'success'
+          : 'warning'
+    },
+
+
+    {
+      nome:
+        'Propriedade',
+
+      estado:
+        processo.propriedadeCompleta
+          ? 'concluida'
+          : 'incompleta',
+
+      texto:
+        processo.propriedadeCompleta
+          ? 'Concluído'
+          : `Incompleto • ${processo.propriedadePercentual}%`,
+
+      highlight:
+        processo.propriedadeCompleta
+          ? 'success'
+          : 'warning'
+    },
+
+
+    {
+      nome:
+        'Levantamento patrimonial',
+
+      estado:
+        patrimonio.estado,
+
+      texto:
+        patrimonio.texto,
+
+      highlight:
+        patrimonio.highlight,
+
+      onclick:
+        `abrirPatrimonio('${escaparAtributo(processo.id)}')`
+    },
+
+
+    {
+      nome:
+        'Identificação da proposta',
+
+      estado:
+        identificacao.estado,
+
+      texto:
+        identificacao.texto,
+
+      highlight:
+        identificacao.highlight,
+
+      onclick:
+        `abrirIdentificacao('${escaparAtributo(processo.id)}')`
+    },
+
+
+    {
+      nome:
+        'Fluxo de caixa',
+
+      estado:
+        fluxoCaixa.estado,
+
+      texto:
+        fluxoCaixa.texto,
+
+      highlight:
+        fluxoCaixa.highlight,
+
+      onclick:
+        `abrirFluxoCaixa('${escaparAtributo(processo.id)}')`
+    },
+
+
+    {
+      nome:
+        'Financiamento',
+
+      estado:
+        financiamento.estado,
+
+      texto:
+        financiamento.texto,
+
+      highlight:
+        financiamento.highlight,
+
+      onclick:
+        `abrirFinanciamento('${escaparAtributo(processo.id)}')`
+    },
+
+
+    {
+      nome:
+        'Documentos',
+
+      estado:
+        'pendente',
+
+      texto:
+        'Pendente',
+
+      highlight:
+        ''
+    }
+
+  ];
+
+
+  const concluidas =
+    etapas.filter(
+      etapa =>
+        etapa.estado ===
+        'concluida'
+    ).length;
+
+
+  const percentual =
+    Math.round(
+      concluidas /
+      etapas.length *
+      100
+    );
+
+
+  /*
+   * A etapa visualmente ativa será a primeira
+   * que ainda não estiver concluída.
+   */
+  let etapaAtual =
+    etapas.findIndex(
+      etapa =>
+        etapa.estado !==
+        'concluida'
+    );
+
+
+  if (
+    etapaAtual < 0
+  ) {
+    etapaAtual =
+      etapas.length - 1;
+  }
+
+
+  /*
+   * =======================================================
+   * PROGRESSO + GOVBR STEP
+   * =======================================================
+   */
+
+  const stepItens =
+    etapas
+      .map(
+        etapa => {
+
+          const highlight =
+            etapa.highlight
+              ? `highlight="${etapa.highlight}"`
+              : '';
+
+
+          const aria =
+            `${etapa.nome}: ${etapa.texto}`;
+
+
+          return `
+
+            <br-step-item
+              label="${escaparHtml(etapa.nome)}"
+              aria-label="${escaparHtml(aria)}"
+              ${highlight}
+            >
+            </br-step-item>
+
+          `;
+
+        }
+      )
+      .join('');
+
+
+  document
+    .getElementById(
+      'processoProgresso'
+    )
+    .innerHTML = `
+
+      <div class="progresso-info">
+
+        <span>
+          ${concluidas} de ${etapas.length}
+          etapas concluídas
+        </span>
+
+        <span>
+          ${percentual}%
+        </span>
+
+      </div>
+
+
+      <div class="progresso-barra">
+
+        <div
+          class="progresso-preenchimento"
+          style="width:${percentual}%"
+        ></div>
+
+      </div>
+
+
+      <div
+        class="processo-step-govbr"
+        aria-hidden="true"
+        inert
+      >
+
+        <br-step
+          content-type="no-content"
+          label-position="bottom"
+          initial-index="${etapaAtual}"
+        >
+
+          ${stepItens}
+
+        </br-step>
+
+      </div>
+
+    `;
+
+
+  /*
+   * =======================================================
+   * CARDS OPERACIONAIS
+   *
+   * Permanecem por enquanto porque contêm os
+   * estados detalhados e as ações reais.
+   * =======================================================
+   */
+
+  document
+    .getElementById(
+      'processoEtapas'
+    )
+    .innerHTML =
+      etapas
+        .map(
+          etapa => {
+
+            if (
+              etapa.onclick
+            ) {
+
+              return `
+
+                <button
+                  type="button"
+                  class="etapa etapa-acao ${etapa.estado}"
+                  onclick="${etapa.onclick}"
+                >
+
+                  <span class="etapa-titulo">
+                    ${escaparHtml(etapa.nome)}
+                  </span>
+
+
+                  <span class="etapa-direita">
+
+                    <span class="etapa-status">
+                      ${escaparHtml(etapa.texto)}
+                    </span>
+
+                    <span class="etapa-seta">
+                      →
+                    </span>
+
+                  </span>
+
+                </button>
+
+              `;
+
+            }
+
+
+            return `
+
+              <div
+                class="etapa ${etapa.estado}"
+              >
+
+                <span class="etapa-titulo">
+                  ${escaparHtml(etapa.nome)}
+                </span>
+
+                <span class="etapa-status">
+                  ${escaparHtml(etapa.texto)}
+                </span>
+
+              </div>
+
+            `;
+
+          }
+        )
+        .join('');
+
+}
+
+</script>

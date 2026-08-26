@@ -1,0 +1,570 @@
+<section
+  id="pagina-propriedades"
+  class="pagina"
+>
+
+  <div class="page-header">
+
+    <h2>
+      Propriedades
+    </h2>
+
+    <p>
+      Identificação e administração das propriedades rurais.
+    </p>
+
+  </div>
+
+
+  <div
+    id="cardFormularioPropriedade"
+    class="card"
+  >
+
+    <h3 id="tituloFormularioPropriedade">
+      Nova propriedade
+    </h3>
+
+
+    <div class="required-legend">
+      <span class="obrigatorio">*</span>
+      Campo necessário para concluir o cadastro.
+      O registro pode ser salvo incompleto.
+    </div>
+
+
+    <div
+      id="resumoPendenciasPropriedade"
+      class="pendencias-card"
+      hidden
+    ></div>
+
+
+    <form id="formPropriedade">
+
+      <input
+        type="hidden"
+        id="propriedadeId"
+      >
+
+
+      <div class="section-title">
+        Identificação da propriedade
+      </div>
+
+
+      <div class="form-grid">
+
+        <div class="span-2">
+
+          <label for="beneficiarioPropriedade">
+            Beneficiário
+            <span class="obrigatorio">*</span>
+          </label>
+
+          <select
+            id="beneficiarioPropriedade"
+            required
+          >
+
+            <option value="">
+              Selecione...
+            </option>
+
+          </select>
+
+        </div>
+
+
+        <div>
+
+          <label for="denominacaoPropriedade">
+            Denominação
+            <span class="obrigatorio">*</span>
+          </label>
+
+          <input
+            id="denominacaoPropriedade"
+            required
+          >
+
+        </div>
+
+
+        <div class="span-2">
+
+          <label for="enderecoPropriedade">
+            Endereço / localização
+            <span class="obrigatorio">*</span>
+          </label>
+
+          <input
+            id="enderecoPropriedade"
+            placeholder="Vicinal, nº do lote, km, região..."
+          >
+
+        </div>
+
+
+        <div>
+
+          <label for="municipioPropriedade">
+            Município
+            <span class="obrigatorio">*</span>
+          </label>
+
+          <select
+            id="municipioPropriedade"
+            required
+          >
+
+            <option value="">
+              Selecione...
+            </option>
+
+            <option>Alto Alegre</option>
+            <option>Amajari</option>
+            <option>Boa Vista</option>
+            <option>Bonfim</option>
+            <option>Cantá</option>
+            <option>Caracaraí</option>
+            <option>Caroebe</option>
+            <option>Iracema</option>
+            <option>Mucajaí</option>
+            <option>Normandia</option>
+            <option>Pacaraima</option>
+            <option>Rorainópolis</option>
+            <option>São João da Baliza</option>
+            <option>São Luiz</option>
+            <option>Uiramutã</option>
+
+          </select>
+
+        </div>
+
+
+        <div>
+
+          <label for="estadoPropriedade">
+            Estado
+            <span class="obrigatorio">*</span>
+          </label>
+
+          <input
+            id="estadoPropriedade"
+            value="RORAIMA"
+            readonly
+          >
+
+        </div>
+
+      </div>
+
+
+      <div class="section-title">
+        Área e ocupação
+      </div>
+
+
+      <div class="form-grid">
+
+        <div>
+
+          <label for="areaTotal">
+            Área total (ha)
+            <span class="obrigatorio">*</span>
+          </label>
+
+          <input
+            id="areaTotal"
+            inputmode="decimal"
+          >
+
+        </div>
+
+
+        <div>
+
+          <label for="areaDisponivel">
+            Área disponível (ha)
+          </label>
+
+          <input
+            id="areaDisponivel"
+            inputmode="decimal"
+          >
+
+        </div>
+
+
+        <div>
+
+          <label for="areaLegal">
+            Área legal (ha)
+          </label>
+
+          <input
+            id="areaLegal"
+            inputmode="decimal"
+          >
+
+        </div>
+
+
+        <div>
+
+          <label for="formaOcupacao">
+            Forma de ocupação
+            <span class="obrigatorio">*</span>
+          </label>
+
+          <select id="formaOcupacao">
+
+            <option value="">
+              Selecione...
+            </option>
+
+            <option value="PROPRIETARIO">
+              Proprietário
+            </option>
+
+            <option value="POSSEIRO">
+              Posseiro
+            </option>
+
+            <option value="ARRENDATARIO">
+              Arrendatário
+            </option>
+
+            <option value="COMODATARIO">
+              Comodatário
+            </option>
+
+            <option value="ASSENTADO">
+              Assentado
+            </option>
+
+            <option value="CONCESSIONARIO">
+              Concessionário
+            </option>
+
+            <option value="OUTRO">
+              Outro
+            </option>
+
+          </select>
+
+        </div>
+
+
+        <div
+          id="campoFormaOcupacaoOutro"
+          hidden
+        >
+
+          <label for="formaOcupacaoOutro">
+            Qual?
+          </label>
+
+          <input id="formaOcupacaoOutro">
+
+        </div>
+
+
+        <div>
+
+          <label for="tempoExploracao">
+            Tempo de exploração / moradia
+            <span class="obrigatorio">*</span>
+          </label>
+
+          <input id="tempoExploracao">
+
+        </div>
+
+
+        <div>
+
+          <label for="moduloPropriedade">
+            Módulo
+          </label>
+
+          <input id="moduloPropriedade">
+
+        </div>
+
+
+        <div>
+
+          <label for="documentoExistente">
+            Documento existente
+            <span class="obrigatorio">*</span>
+          </label>
+
+          <select id="documentoExistente">
+
+            <option value="">
+              Selecione...
+            </option>
+
+            <option value="TITULO_DEFINITIVO">
+              Título definitivo
+            </option>
+
+            <option value="CONTRATO_COMPRA_VENDA">
+              Contrato de compra e venda
+            </option>
+
+            <option value="CCU">
+              CCU
+            </option>
+
+            <option value="CDRU">
+              CDRU
+            </option>
+
+            <option value="CAR">
+              CAR
+            </option>
+
+            <option value="DECLARACAO_POSSE">
+              Declaração de posse
+            </option>
+
+            <option value="CONTRATO_ARRENDAMENTO">
+              Contrato de arrendamento
+            </option>
+
+            <option value="CONTRATO_COMODATO">
+              Contrato de comodato
+            </option>
+
+            <option value="OUTRO">
+              Outro
+            </option>
+
+          </select>
+
+        </div>
+
+
+        <div
+          id="campoDocumentoOutro"
+          hidden
+        >
+
+          <label for="documentoExistenteOutro">
+            Qual?
+          </label>
+
+          <input id="documentoExistenteOutro">
+
+        </div>
+
+      </div>
+
+
+      <div class="section-title">
+        Localização geográfica
+      </div>
+
+
+      <p class="section-description">
+        Clique no mapa para indicar a propriedade ou informe
+        latitude e longitude manualmente.
+      </p>
+
+
+      <div class="form-grid">
+
+        <div>
+
+          <label for="latitude">
+            Latitude
+          </label>
+
+          <input
+            id="latitude"
+            inputmode="decimal"
+            placeholder="Ex.: 2.823500"
+          >
+
+        </div>
+
+
+        <div>
+
+          <label for="longitude">
+            Longitude
+          </label>
+
+          <input
+            id="longitude"
+            inputmode="decimal"
+            placeholder="Ex.: -60.675800"
+          >
+
+        </div>
+
+
+        <div class="campo-mapa-acoes">
+
+          <label>
+            Localização
+          </label>
+
+          <button
+            type="button"
+            class="secondary"
+            onclick="usarMinhaLocalizacao()"
+          >
+            Usar localização atual
+          </button>
+
+        </div>
+
+      </div>
+
+
+      <div
+        id="mapaMensagem"
+        class="mapa-mensagem"
+      >
+        Carregando mapa...
+      </div>
+
+
+      <div
+        id="mapaPropriedade"
+        class="mapa-propriedade"
+      ></div>
+
+
+      <div class="section-title">
+        Confrontações
+      </div>
+
+
+      <div class="form-grid">
+
+        <div>
+
+          <label for="confrontacaoNorte">
+            Norte
+          </label>
+
+          <input id="confrontacaoNorte">
+
+        </div>
+
+
+        <div>
+
+          <label for="confrontacaoSul">
+            Sul
+          </label>
+
+          <input id="confrontacaoSul">
+
+        </div>
+
+
+        <div>
+
+          <label for="confrontacaoLeste">
+            Leste
+          </label>
+
+          <input id="confrontacaoLeste">
+
+        </div>
+
+
+        <div>
+
+          <label for="confrontacaoOeste">
+            Oeste
+          </label>
+
+          <input id="confrontacaoOeste">
+
+        </div>
+
+      </div>
+
+
+      <div class="section-title">
+        Administração da propriedade
+      </div>
+
+
+      <textarea
+        id="administracaoPropriedade"
+        rows="6"
+        placeholder="Descreva como ocorre a administração da propriedade..."
+      ></textarea>
+
+
+      <div class="actions">
+
+        <button
+          id="btnSalvarPropriedade"
+          class="primary"
+          type="submit"
+        >
+          Cadastrar propriedade
+        </button>
+
+
+        <button
+          id="btnCancelarEdicaoPropriedade"
+          class="secondary"
+          type="button"
+          style="display:none;"
+          onclick="novaPropriedade()"
+        >
+          Cancelar edição
+        </button>
+
+      </div>
+
+
+      <div
+        id="mensagemPropriedade"
+        class="message"
+      ></div>
+
+    </form>
+
+  </div>
+
+
+  <div class="card">
+
+    <h3>
+      Propriedades cadastradas
+    </h3>
+
+
+    <div class="search-box">
+
+      <label for="buscaPropriedades">
+        Pesquisar
+      </label>
+
+      <input
+        id="buscaPropriedades"
+        type="search"
+        placeholder="Propriedade, beneficiário ou município..."
+      >
+
+    </div>
+
+
+    <div id="listaPropriedades">
+      Carregando...
+    </div>
+
+  </div>
+
+</section>

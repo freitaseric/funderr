@@ -1,0 +1,1575 @@
+<script>
+
+  let propriedadesLista = [];
+
+  let ordenacaoPropriedades = {
+    campo:
+      'denominacao',
+
+    direcao:
+      'asc'
+  };
+
+  let mapaPropriedade = null;
+
+  let marcadorPropriedade = null;
+
+  let googleMapsCarregado = false;
+
+  let googleMapsCarregando = false;
+
+
+  function registrarEventosPropriedades() {
+
+    document
+      .getElementById(
+        'formPropriedade'
+      )
+      .addEventListener(
+        'submit',
+        salvarPropriedade
+      );
+
+
+    document
+      .getElementById(
+        'buscaPropriedades'
+      )
+      .addEventListener(
+        'input',
+        renderizarPropriedadesFiltradas
+      );
+
+
+    document
+      .getElementById(
+        'formaOcupacao'
+      )
+      .addEventListener(
+        'change',
+        atualizarCampoFormaOcupacaoOutro
+      );
+
+
+    document
+      .getElementById(
+        'documentoExistente'
+      )
+      .addEventListener(
+        'change',
+        atualizarCampoDocumentoOutro
+      );
+
+
+    document
+      .getElementById(
+        'latitude'
+      )
+      .addEventListener(
+        'change',
+        atualizarMapaPelosCampos
+      );
+
+
+    document
+      .getElementById(
+        'longitude'
+      )
+      .addEventListener(
+        'change',
+        atualizarMapaPelosCampos
+      );
+
+
+    carregarGoogleMaps();
+
+  }
+
+
+  function atualizarCampoFormaOcupacaoOutro() {
+
+    const outro =
+      document.getElementById(
+        'formaOcupacao'
+      ).value ===
+      'OUTRO';
+
+
+    document
+      .getElementById(
+        'campoFormaOcupacaoOutro'
+      )
+      .hidden =
+        !outro;
+
+  }
+
+
+  function atualizarCampoDocumentoOutro() {
+
+    const outro =
+      document.getElementById(
+        'documentoExistente'
+      ).value ===
+      'OUTRO';
+
+
+    document
+      .getElementById(
+        'campoDocumentoOutro'
+      )
+      .hidden =
+        !outro;
+
+  }
+
+
+  function carregarGoogleMaps() {
+
+    if (
+      googleMapsCarregado ||
+      googleMapsCarregando
+    ) {
+      return;
+    }
+
+
+    const apiKey =
+      window.FUNDER_CONFIG
+        ?.mapsApiKey ||
+      '';
+
+
+    const mensagem =
+      document.getElementById(
+        'mapaMensagem'
+      );
+
+
+    if (!apiKey) {
+
+      mensagem.className =
+        'mapa-mensagem mapa-aviso';
+
+
+      mensagem.textContent =
+        'Google Maps não configurado. As coordenadas podem ser informadas manualmente.';
+
+
+      return;
+    }
+
+
+    googleMapsCarregando =
+      true;
+
+
+    window.inicializarGoogleMapsFUNDER =
+      function () {
+
+        googleMapsCarregado =
+          true;
+
+
+        googleMapsCarregando =
+          false;
+
+
+        iniciarMapaPropriedade();
+
+      };
+
+
+    const script =
+      document.createElement(
+        'script'
+      );
+
+
+    script.src =
+      'https://maps.googleapis.com/maps/api/js' +
+      '?key=' +
+      encodeURIComponent(
+        apiKey
+      ) +
+      '&callback=inicializarGoogleMapsFUNDER' +
+      '&loading=async';
+
+
+    script.async =
+      true;
+
+
+    script.defer =
+      true;
+
+
+    script.onerror =
+      function () {
+
+        googleMapsCarregando =
+          false;
+
+
+        mensagem.className =
+          'mapa-mensagem erro';
+
+
+        mensagem.textContent =
+          'Não foi possível carregar o Google Maps.';
+
+      };
+
+
+    document.head.appendChild(
+      script
+    );
+
+  }
+
+
+  function iniciarMapaPropriedade() {
+
+    if (
+      !googleMapsCarregado ||
+      !window.google?.maps
+    ) {
+      return;
+    }
+
+
+    const container =
+      document.getElementById(
+        'mapaPropriedade'
+      );
+
+
+    const mensagem =
+      document.getElementById(
+        'mapaMensagem'
+      );
+
+
+    const centroInicial = {
+      lat: 2.7376,
+      lng: -62.0751
+    };
+
+
+    mapaPropriedade =
+      new google.maps.Map(
+        container,
+        {
+          center:
+            centroInicial,
+
+          zoom:
+            7,
+
+          mapTypeId:
+            'hybrid',
+
+          streetViewControl:
+            false,
+
+          mapTypeControl:
+            true,
+
+          fullscreenControl:
+            true
+        }
+      );
+
+
+    marcadorPropriedade =
+      new google.maps.Marker({
+        map:
+          mapaPropriedade,
+
+        visible:
+          false
+      });
+
+
+    mapaPropriedade.addListener(
+      'click',
+      evento => {
+
+        definirCoordenadasMapa(
+          evento.latLng.lat(),
+          evento.latLng.lng(),
+          true
+        );
+
+      }
+    );
+
+
+    mensagem.style.display =
+      'none';
+
+
+    atualizarMapaPelosCampos();
+
+  }
+
+
+  function definirCoordenadasMapa(
+    latitude,
+    longitude,
+    atualizarCampos
+  ) {
+
+    const lat =
+      Number(latitude);
+
+
+    const lng =
+      Number(longitude);
+
+
+    if (
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lng)
+    ) {
+      return false;
+    }
+
+
+    if (
+      lat < -90 ||
+      lat > 90 ||
+      lng < -180 ||
+      lng > 180
+    ) {
+      return false;
+    }
+
+
+    if (atualizarCampos) {
+
+      document
+        .getElementById(
+          'latitude'
+        )
+        .value =
+          lat.toFixed(6);
+
+
+      document
+        .getElementById(
+          'longitude'
+        )
+        .value =
+          lng.toFixed(6);
+
+    }
+
+
+    if (
+      mapaPropriedade &&
+      marcadorPropriedade
+    ) {
+
+      const posicao = {
+        lat,
+        lng
+      };
+
+
+      marcadorPropriedade
+        .setPosition(
+          posicao
+        );
+
+
+      marcadorPropriedade
+        .setVisible(
+          true
+        );
+
+
+      mapaPropriedade.panTo(
+        posicao
+      );
+
+
+      if (
+        mapaPropriedade.getZoom() <
+        15
+      ) {
+        mapaPropriedade.setZoom(
+          15
+        );
+      }
+
+    }
+
+
+    return true;
+  }
+
+
+  function atualizarMapaPelosCampos() {
+
+    const latitude =
+      document
+        .getElementById(
+          'latitude'
+        )
+        .value;
+
+
+    const longitude =
+      document
+        .getElementById(
+          'longitude'
+        )
+        .value;
+
+
+    if (
+      !latitude &&
+      !longitude
+    ) {
+      return;
+    }
+
+
+    if (
+      !latitude ||
+      !longitude
+    ) {
+      return;
+    }
+
+
+    const lat =
+      Number(
+        latitude.replace(
+          ',',
+          '.'
+        )
+      );
+
+
+    const lng =
+      Number(
+        longitude.replace(
+          ',',
+          '.'
+        )
+      );
+
+
+    const valido =
+      definirCoordenadasMapa(
+        lat,
+        lng,
+        false
+      );
+
+
+    if (!valido) {
+
+      document
+        .getElementById(
+          'mensagemPropriedade'
+        )
+        .className =
+          'message erro';
+
+
+      document
+        .getElementById(
+          'mensagemPropriedade'
+        )
+        .textContent =
+          'Coordenadas inválidas. Latitude deve estar entre -90 e 90 e longitude entre -180 e 180.';
+
+    }
+
+  }
+
+
+  function usarMinhaLocalizacao() {
+
+    if (
+      !navigator.geolocation
+    ) {
+
+      alert(
+        'O navegador não disponibiliza geolocalização.'
+      );
+
+      return;
+    }
+
+
+    navigator.geolocation
+      .getCurrentPosition(
+
+        posicao => {
+
+          definirCoordenadasMapa(
+            posicao.coords.latitude,
+            posicao.coords.longitude,
+            true
+          );
+
+        },
+
+        erro => {
+
+          alert(
+            'Não foi possível obter a localização: ' +
+            erro.message
+          );
+
+        },
+
+        {
+          enableHighAccuracy:
+            true,
+
+          timeout:
+            15000,
+
+          maximumAge:
+            0
+        }
+      );
+
+  }
+
+
+  function salvarPropriedade(
+    event
+  ) {
+
+    event.preventDefault();
+
+
+    const botao =
+      document.getElementById(
+        'btnSalvarPropriedade'
+      );
+
+
+    const mensagem =
+      document.getElementById(
+        'mensagemPropriedade'
+      );
+
+
+    const id =
+      document.getElementById(
+        'propriedadeId'
+      ).value;
+
+
+    const dados = {
+
+      id,
+
+      beneficiarioId:
+        document.getElementById(
+          'beneficiarioPropriedade'
+        ).value,
+
+      denominacao:
+        document.getElementById(
+          'denominacaoPropriedade'
+        ).value,
+
+      endereco:
+        document.getElementById(
+          'enderecoPropriedade'
+        ).value,
+
+      municipio:
+        document.getElementById(
+          'municipioPropriedade'
+        ).value,
+
+      estado:
+        'RORAIMA',
+
+      areaTotal:
+        document.getElementById(
+          'areaTotal'
+        ).value,
+
+      areaDisponivel:
+        document.getElementById(
+          'areaDisponivel'
+        ).value,
+
+      areaLegal:
+        document.getElementById(
+          'areaLegal'
+        ).value,
+
+      formaOcupacaoCodigo:
+        document.getElementById(
+          'formaOcupacao'
+        ).value,
+
+      formaOcupacaoOutro:
+        document.getElementById(
+          'formaOcupacaoOutro'
+        ).value,
+
+      tempoExploracao:
+        document.getElementById(
+          'tempoExploracao'
+        ).value,
+
+      modulo:
+        document.getElementById(
+          'moduloPropriedade'
+        ).value,
+
+      documentoExistenteCodigo:
+        document.getElementById(
+          'documentoExistente'
+        ).value,
+
+      documentoExistenteOutro:
+        document.getElementById(
+          'documentoExistenteOutro'
+        ).value,
+
+      latitude:
+        document.getElementById(
+          'latitude'
+        ).value,
+
+      longitude:
+        document.getElementById(
+          'longitude'
+        ).value,
+
+      confrontacaoNorte:
+        document.getElementById(
+          'confrontacaoNorte'
+        ).value,
+
+      confrontacaoSul:
+        document.getElementById(
+          'confrontacaoSul'
+        ).value,
+
+      confrontacaoLeste:
+        document.getElementById(
+          'confrontacaoLeste'
+        ).value,
+
+      confrontacaoOeste:
+        document.getElementById(
+          'confrontacaoOeste'
+        ).value,
+
+      administracao:
+        document.getElementById(
+          'administracaoPropriedade'
+        ).value
+    };
+
+
+    botao.disabled =
+      true;
+
+
+    mensagem.className =
+      'message loading';
+
+
+    mensagem.textContent =
+      id
+        ? 'Salvando alterações...'
+        : 'Cadastrando propriedade...';
+
+
+    google.script.run
+
+      .withSuccessHandler(
+        () => {
+
+          marcarFormularioSalvo();
+
+          limparFormularioPropriedade_();
+
+
+          mensagem.className =
+            'message sucesso';
+
+
+          mensagem.textContent =
+            id
+              ? 'Propriedade atualizada com sucesso.'
+              : 'Propriedade cadastrada com sucesso.';
+
+
+          carregarPropriedades();
+
+        }
+      )
+
+      .withFailureHandler(
+        erro => {
+
+          mensagem.className =
+            'message erro';
+
+
+          mensagem.textContent =
+            erro.message ||
+            String(erro);
+
+
+          botao.disabled =
+            false;
+
+        }
+      )
+
+      .salvarPropriedade(
+        dados
+      );
+
+  }
+
+
+  function carregarPropriedades() {
+
+    google.script.run
+
+      .withSuccessHandler(
+        propriedades => {
+
+          propriedadesDisponiveis =
+            propriedades;
+
+          propriedadesLista =
+            propriedades;
+
+
+          renderizarPropriedadesFiltradas();
+
+
+          if (
+            typeof atualizarSelectPropriedadesProcesso ===
+            'function'
+          ) {
+            atualizarSelectPropriedadesProcesso();
+          }
+
+        }
+      )
+
+      .withFailureHandler(
+        erro => {
+
+          document
+            .getElementById(
+              'listaPropriedades'
+            )
+            .innerHTML = `
+
+              <div class="erro">
+                ${escaparHtml(
+                  erro.message ||
+                  String(erro)
+                )}
+              </div>
+
+            `;
+
+        }
+      )
+
+      .listarPropriedades();
+
+  }
+
+
+  function ordenarPropriedades(
+    campo
+  ) {
+
+    if (
+      ordenacaoPropriedades.campo ===
+      campo
+    ) {
+
+      ordenacaoPropriedades.direcao =
+        ordenacaoPropriedades.direcao ===
+        'asc'
+          ? 'desc'
+          : 'asc';
+
+    } else {
+
+      ordenacaoPropriedades.campo =
+        campo;
+
+      ordenacaoPropriedades.direcao =
+        'asc';
+
+    }
+
+
+    renderizarPropriedadesFiltradas();
+
+  }
+
+
+  function renderizarPropriedadesFiltradas() {
+
+    const termo =
+      normalizarBusca(
+        document
+          .getElementById(
+            'buscaPropriedades'
+          )
+          .value
+      );
+
+
+    let dados =
+      propriedadesLista
+        .filter(
+          item => {
+
+            const texto =
+              normalizarBusca([
+                item.denominacao,
+                item.beneficiarioNome,
+                item.beneficiarioCpf,
+                item.municipio
+              ].join(' '));
+
+
+            return (
+              !termo ||
+              texto.includes(
+                termo
+              )
+            );
+
+          }
+        );
+
+
+    dados =
+      [...dados]
+        .sort(
+          (a, b) => {
+
+            const campo =
+              ordenacaoPropriedades.campo;
+
+
+            const resultado =
+              String(
+                a[campo] ?? ''
+              )
+                .localeCompare(
+                  String(
+                    b[campo] ?? ''
+                  ),
+                  'pt-BR',
+                  {
+                    numeric:
+                      true
+                  }
+                );
+
+
+            return (
+              ordenacaoPropriedades.direcao ===
+              'asc'
+                ? resultado
+                : -resultado
+            );
+
+          }
+        );
+
+
+    renderizarPropriedades(
+      dados
+    );
+
+  }
+
+
+  function renderizarPropriedades(
+    propriedades
+  ) {
+
+    const container =
+      document.getElementById(
+        'listaPropriedades'
+      );
+
+
+    if (!propriedades.length) {
+
+      container.innerHTML = `
+
+        <div class="empty">
+          Nenhuma propriedade encontrada.
+        </div>
+
+      `;
+
+      return;
+    }
+
+
+    const linhas =
+      propriedades
+        .map(
+          item => `
+
+            <tr
+              class="clickable"
+              onclick="editarPropriedade('${escaparAtributo(item.id)}')"
+            >
+
+              <td>
+                <strong>
+                  ${escaparHtml(
+                    item.denominacao
+                  )}
+                </strong>
+              </td>
+
+              <td>
+                ${escaparHtml(
+                  item.beneficiarioNome
+                )}
+              </td>
+
+              <td>
+                ${escaparHtml(
+                  item.municipio
+                )}
+              </td>
+
+              <td>
+                ${escaparHtml(
+                  item.areaTotal
+                )}
+              </td>
+
+              <td>
+
+                <span
+                  class="${
+                    item.cadastroAmpliadoCompleto
+                      ? 'cadastro-ok'
+                      : 'cadastro-pendente'
+                  }"
+                >
+                  ${
+                    item.cadastroAmpliadoCompleto
+                      ? 'COMPLETO'
+                      : `INCOMPLETO • ${item.percentualCadastro}%`
+                  }
+                </span>
+
+                ${
+                  item.camposFaltantes
+                    ?.length
+                    ? `
+                      <div class="faltantes-mini">
+                        Falta: ${escaparHtml(
+                          item.camposFaltantes.join(', ')
+                        )}
+                      </div>
+                    `
+                    : ''
+                }
+
+              </td>
+
+            </tr>
+
+          `
+        )
+        .join('');
+
+
+    container.innerHTML = `
+
+      <div class="table-wrapper">
+
+        <table>
+
+          <thead>
+
+            <tr>
+
+              <th>
+                <button
+                  class="table-sort-button"
+                  onclick="ordenarPropriedades('denominacao')"
+                >
+                  Propriedade
+                </button>
+              </th>
+
+              <th>
+                Beneficiário
+              </th>
+
+              <th>
+                <button
+                  class="table-sort-button"
+                  onclick="ordenarPropriedades('municipio')"
+                >
+                  Município
+                </button>
+              </th>
+
+              <th>
+                Área total
+              </th>
+
+              <th>
+                Cadastro
+              </th>
+
+            </tr>
+
+          </thead>
+
+          <tbody>
+            ${linhas}
+          </tbody>
+
+        </table>
+
+      </div>
+
+    `;
+
+  }
+
+
+  function selecionarValorPropriedade(
+    select,
+    outroInput,
+    valor,
+    valoresConhecidos
+  ) {
+
+    if (
+      !valor
+    ) {
+      select.value = '';
+      outroInput.value = '';
+      return;
+    }
+
+
+    if (
+      valoresConhecidos.includes(
+        valor
+      )
+    ) {
+
+      select.value =
+        valor;
+
+      outroInput.value =
+        '';
+
+    } else {
+
+      select.value =
+        'OUTRO';
+
+      outroInput.value =
+        valor;
+
+    }
+
+  }
+
+
+  function editarPropriedade(
+    id
+  ) {
+
+    if (
+      !confirmarDescartarAlteracoes()
+    ) {
+      return;
+    }
+
+
+    google.script.run
+
+      .withSuccessHandler(
+        propriedade => {
+
+          document
+            .getElementById(
+              'propriedadeId'
+            )
+            .value =
+              propriedade.id;
+
+
+          const beneficiario =
+            document.getElementById(
+              'beneficiarioPropriedade'
+            );
+
+
+          beneficiario.value =
+            propriedade.beneficiarioId;
+
+
+          beneficiario.disabled =
+            true;
+
+
+          document
+            .getElementById(
+              'denominacaoPropriedade'
+            )
+            .value =
+              propriedade.denominacao;
+
+
+          document
+            .getElementById(
+              'enderecoPropriedade'
+            )
+            .value =
+              propriedade.endereco;
+
+
+          document
+            .getElementById(
+              'municipioPropriedade'
+            )
+            .value =
+              propriedade.municipio;
+
+
+          document
+            .getElementById(
+              'areaTotal'
+            )
+            .value =
+              propriedade.areaTotal;
+
+
+          document
+            .getElementById(
+              'areaDisponivel'
+            )
+            .value =
+              propriedade.areaDisponivel;
+
+
+          document
+            .getElementById(
+              'areaLegal'
+            )
+            .value =
+              propriedade.areaLegal;
+
+
+          selecionarValorPropriedade(
+            document.getElementById(
+              'formaOcupacao'
+            ),
+
+            document.getElementById(
+              'formaOcupacaoOutro'
+            ),
+
+            propriedade.formaOcupacao,
+
+            [
+              'PROPRIETARIO',
+              'POSSEIRO',
+              'ARRENDATARIO',
+              'COMODATARIO',
+              'ASSENTADO',
+              'CONCESSIONARIO'
+            ]
+          );
+
+
+          atualizarCampoFormaOcupacaoOutro();
+
+
+          document
+            .getElementById(
+              'tempoExploracao'
+            )
+            .value =
+              propriedade.tempoExploracao;
+
+
+          document
+            .getElementById(
+              'moduloPropriedade'
+            )
+            .value =
+              propriedade.modulo;
+
+
+          selecionarValorPropriedade(
+            document.getElementById(
+              'documentoExistente'
+            ),
+
+            document.getElementById(
+              'documentoExistenteOutro'
+            ),
+
+            propriedade.documentoExistente,
+
+            [
+              'TITULO_DEFINITIVO',
+              'CONTRATO_COMPRA_VENDA',
+              'CCU',
+              'CDRU',
+              'CAR',
+              'DECLARACAO_POSSE',
+              'CONTRATO_ARRENDAMENTO',
+              'CONTRATO_COMODATO'
+            ]
+          );
+
+
+          atualizarCampoDocumentoOutro();
+
+
+          document
+            .getElementById(
+              'latitude'
+            )
+            .value =
+              propriedade.latitude;
+
+
+          document
+            .getElementById(
+              'longitude'
+            )
+            .value =
+              propriedade.longitude;
+
+
+          document
+            .getElementById(
+              'confrontacaoNorte'
+            )
+            .value =
+              propriedade.confrontacaoNorte;
+
+
+          document
+            .getElementById(
+              'confrontacaoSul'
+            )
+            .value =
+              propriedade.confrontacaoSul;
+
+
+          document
+            .getElementById(
+              'confrontacaoLeste'
+            )
+            .value =
+              propriedade.confrontacaoLeste;
+
+
+          document
+            .getElementById(
+              'confrontacaoOeste'
+            )
+            .value =
+              propriedade.confrontacaoOeste;
+
+
+          document
+            .getElementById(
+              'administracaoPropriedade'
+            )
+            .value =
+              propriedade.administracao;
+
+
+          mostrarPendenciasPropriedade(
+            propriedade
+          );
+
+
+          document
+            .getElementById(
+              'tituloFormularioPropriedade'
+            )
+            .textContent =
+              'Editar propriedade';
+
+
+          document
+            .getElementById(
+              'btnSalvarPropriedade'
+            )
+            .textContent =
+              'Salvar alterações';
+
+
+          document
+            .getElementById(
+              'btnCancelarEdicaoPropriedade'
+            )
+            .style.display =
+              'inline-block';
+
+
+          atualizarMapaPelosCampos();
+
+
+          marcarFormularioSalvo();
+
+
+          document
+            .getElementById(
+              'cardFormularioPropriedade'
+            )
+            .scrollIntoView({
+              behavior:
+                'smooth',
+
+              block:
+                'start'
+            });
+
+        }
+      )
+
+      .withFailureHandler(
+        erro => {
+
+          alert(
+            erro.message ||
+            String(erro)
+          );
+
+        }
+      )
+
+      .buscarPropriedade(
+        id
+      );
+
+  }
+
+
+  function mostrarPendenciasPropriedade(
+    propriedade
+  ) {
+
+    const container =
+      document.getElementById(
+        'resumoPendenciasPropriedade'
+      );
+
+
+    const faltantes =
+      propriedade.camposFaltantes ||
+      [];
+
+
+    container.hidden =
+      false;
+
+
+    if (!faltantes.length) {
+
+      container.className =
+        'pendencias-card completa';
+
+
+      container.textContent =
+        'Cadastro completo.';
+
+      return;
+    }
+
+
+    container.className =
+      'pendencias-card';
+
+
+    container.innerHTML = `
+
+      <strong>
+        Cadastro ${propriedade.percentualCadastro}% concluído.
+      </strong>
+
+      <div>
+        Para concluir, informe:
+        ${escaparHtml(
+          faltantes.join(', ')
+        )}.
+      </div>
+
+    `;
+
+  }
+
+
+  function novaPropriedade() {
+
+    if (
+      !confirmarDescartarAlteracoes()
+    ) {
+      return;
+    }
+
+
+    limparFormularioPropriedade_();
+
+  }
+
+
+  function limparFormularioPropriedade_() {
+
+    document
+      .getElementById(
+        'formPropriedade'
+      )
+      .reset();
+
+
+    document
+      .getElementById(
+        'propriedadeId'
+      )
+      .value =
+        '';
+
+
+    document
+      .getElementById(
+        'beneficiarioPropriedade'
+      )
+      .disabled =
+        false;
+
+
+    document
+      .getElementById(
+        'estadoPropriedade'
+      )
+      .value =
+        'RORAIMA';
+
+
+    document
+      .getElementById(
+        'campoFormaOcupacaoOutro'
+      )
+      .hidden =
+        true;
+
+
+    document
+      .getElementById(
+        'campoDocumentoOutro'
+      )
+      .hidden =
+        true;
+
+
+    document
+      .getElementById(
+        'resumoPendenciasPropriedade'
+      )
+      .hidden =
+        true;
+
+
+    document
+      .getElementById(
+        'tituloFormularioPropriedade'
+      )
+      .textContent =
+        'Nova propriedade';
+
+
+    document
+      .getElementById(
+        'btnSalvarPropriedade'
+      )
+      .textContent =
+        'Cadastrar propriedade';
+
+
+    document
+      .getElementById(
+        'btnSalvarPropriedade'
+      )
+      .disabled =
+        false;
+
+
+    document
+      .getElementById(
+        'btnCancelarEdicaoPropriedade'
+      )
+      .style.display =
+        'none';
+
+
+    if (
+      marcadorPropriedade
+    ) {
+      marcadorPropriedade
+        .setVisible(
+          false
+        );
+    }
+
+
+    if (
+      mapaPropriedade
+    ) {
+
+      mapaPropriedade
+        .setCenter({
+          lat:
+            2.7376,
+
+          lng:
+            -62.0751
+        });
+
+
+      mapaPropriedade
+        .setZoom(
+          7
+        );
+
+    }
+
+
+    marcarFormularioSalvo();
+
+  }
+
+</script>

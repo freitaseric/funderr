@@ -1,0 +1,2539 @@
+<style>
+
+  /* =========================================================
+     BASE
+     ========================================================= */
+
+  * {
+    box-sizing: border-box;
+  }
+
+
+  html {
+    min-height: 100%;
+  }
+
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: Arial, Helvetica, sans-serif;
+    background: #f5f6f7;
+    color: #202124;
+  }
+
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+
+  [hidden] {
+    display: none !important;
+  }
+
+
+  /* =========================================================
+     HEADER
+     ========================================================= */
+
+  .app-header {
+    min-height: 76px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 12px 32px;
+    background: #ffffff;
+    border-bottom: 1px solid #dadce0;
+  }
+
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+  }
+
+
+  .brand-logo {
+    display: block;
+    width: 48px;
+    height: 48px;
+    flex: 0 0 48px;
+    object-fit: contain;
+    object-position: center;
+  }
+
+
+  .brand-text {
+    min-width: 0;
+  }
+
+
+  .brand-title {
+    color: #202124;
+    font-size: 20px;
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: 0.2px;
+  }
+
+
+  .brand-subtitle {
+    margin-top: 4px;
+    color: #5f6368;
+    font-size: 12px;
+    line-height: 1.25;
+  }
+
+
+  .app-version {
+    flex-shrink: 0;
+    padding: 5px 9px;
+    border-radius: 999px;
+    background: #f1f3f4;
+    color: #5f6368;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+
+  /* =========================================================
+     LAYOUT
+     ========================================================= */
+
+  .layout {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    min-height: calc(100vh - 76px);
+  }
+
+
+  nav {
+    padding: 24px 12px;
+    background: #ffffff;
+    border-right: 1px solid #dadce0;
+  }
+
+
+  main {
+    width: 100%;
+    min-width: 0;
+    padding: 32px;
+  }
+
+
+  /* =========================================================
+     NAVEGAÇÃO
+     ========================================================= */
+
+  .nav-button {
+    display: block;
+    width: 100%;
+    margin-bottom: 6px;
+    padding: 12px 16px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: #202124;
+    text-align: left;
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+
+  .nav-button:hover {
+    background: #f1f3f4;
+  }
+
+
+  .nav-button.ativo {
+    background: #e8f0fe;
+    color: #174ea6;
+    font-weight: 700;
+  }
+
+
+  /* =========================================================
+     PÁGINAS
+     ========================================================= */
+
+  .pagina {
+    display: none;
+  }
+
+
+  .pagina.ativa {
+    display: block;
+  }
+
+
+  .page-header {
+    margin-bottom: 24px;
+  }
+
+
+  .page-header h2 {
+    margin: 0 0 6px;
+    font-size: 24px;
+  }
+
+
+  .page-header p {
+    margin: 0;
+    color: #5f6368;
+    line-height: 1.5;
+  }
+
+
+  .module-toolbar {
+    margin-bottom: 18px;
+  }
+
+
+  /* =========================================================
+     CARDS
+     ========================================================= */
+
+  .card {
+    width: 100%;
+    margin-bottom: 24px;
+    padding: 24px;
+    background: #ffffff;
+    border: 1px solid #dadce0;
+    border-radius: 10px;
+  }
+
+
+  .card h3 {
+    margin-top: 0;
+  }
+
+
+  /* =========================================================
+     FORMULÁRIOS
+     ========================================================= */
+
+  .section-title {
+    margin: 28px 0 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e8eaed;
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+
+  .section-description {
+    margin: -6px 0 18px;
+    color: #5f6368;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+
+  .span-2 {
+    grid-column: span 2;
+  }
+
+
+  label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+
+  input,
+  select,
+  textarea {
+    width: 100%;
+    min-width: 0;
+    padding: 10px 12px;
+    border: 1px solid #bdc1c6;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #202124;
+    font-size: 14px;
+  }
+
+
+  textarea {
+    resize: vertical;
+    min-height: 100px;
+    line-height: 1.45;
+  }
+
+
+  input:focus,
+  select:focus,
+  textarea:focus {
+    outline: 2px solid #1a73e8;
+    border-color: transparent;
+  }
+
+
+  input[readonly],
+  select:disabled {
+    background: #f1f3f4;
+    color: #5f6368;
+  }
+
+
+  .field-help {
+    margin-top: 5px;
+    color: #5f6368;
+    font-size: 11px;
+  }
+
+
+  .obrigatorio {
+    color: #b3261e;
+  }
+
+
+  .required-legend {
+    margin-bottom: 20px;
+    color: #5f6368;
+    font-size: 12px;
+  }
+
+
+  /* =========================================================
+     PENDÊNCIAS
+     ========================================================= */
+
+  .pendencias-card {
+    margin-bottom: 20px;
+    padding: 12px 14px;
+    border: 1px solid #f6d58d;
+    border-radius: 7px;
+    background: #fef7e0;
+    color: #754c00;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+
+  .pendencias-card.completa {
+    border-color: #ceead6;
+    background: #e6f4ea;
+    color: #137333;
+  }
+
+
+  .faltantes-mini {
+    max-width: 320px;
+    margin-top: 5px;
+    color: #5f6368;
+    font-size: 10px;
+    line-height: 1.35;
+  }
+
+
+  /* =========================================================
+     BOTÕES
+     ========================================================= */
+
+  .actions,
+  .processo-atalhos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 24px;
+  }
+
+
+  button.primary {
+    padding: 10px 18px;
+    border: 0;
+    border-radius: 6px;
+    background: #1a73e8;
+    color: #ffffff;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+
+  button.primary:hover:not(:disabled) {
+    background: #1765cc;
+  }
+
+
+  button.secondary {
+    padding: 9px 16px;
+    border: 1px solid #dadce0;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #1a73e8;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+
+  button.secondary:hover:not(:disabled) {
+    background: #f8f9fa;
+  }
+
+
+  button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+
+  .context-action {
+    margin-top: 10px;
+  }
+
+
+  .action-link {
+    padding: 4px 6px;
+    border: 0;
+    background: transparent;
+    color: #1a73e8;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+
+  .action-link:hover {
+    text-decoration: underline;
+  }
+
+
+  .action-link.danger {
+    color: #b3261e;
+  }
+
+
+  /* =========================================================
+     TABELAS
+     ========================================================= */
+
+  .table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+
+  th,
+  td {
+    padding: 12px;
+    border-bottom: 1px solid #e8eaed;
+    text-align: left;
+    vertical-align: middle;
+    font-size: 14px;
+  }
+
+
+  th {
+    color: #5f6368;
+    font-size: 12px;
+    text-transform: uppercase;
+  }
+
+
+  tr.clickable {
+    cursor: pointer;
+  }
+
+
+  tr.clickable:hover {
+    background: #f8f9fa;
+  }
+
+
+  td.numero {
+    white-space: nowrap;
+    text-align: right;
+  }
+
+
+  .acoes-tabela {
+    white-space: nowrap;
+  }
+
+
+  .table-sort-button {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font-size: inherit;
+    font-weight: 700;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
+
+  .table-sort-button:hover {
+    color: #1a73e8;
+  }
+
+
+  /* =========================================================
+     STATUS
+     ========================================================= */
+
+  .status,
+  .cadastro-ok,
+  .cadastro-pendente {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+
+  .status {
+    background: #fef7e0;
+    color: #b06000;
+  }
+
+
+  .status-concluido {
+    background: #e6f4ea;
+    color: #137333;
+  }
+
+
+  .status-revisao {
+    background: #fef7e0;
+    color: #b06000;
+  }
+
+
+  .cadastro-ok {
+    background: #e6f4ea;
+    color: #137333;
+  }
+
+
+  .cadastro-pendente {
+    background: #fef7e0;
+    color: #b06000;
+  }
+
+
+  /* =========================================================
+     MENSAGENS
+     ========================================================= */
+
+  .message {
+    margin-top: 16px;
+    font-size: 14px;
+  }
+
+
+  .sucesso {
+    color: #137333;
+  }
+
+
+  .erro {
+    color: #b3261e;
+  }
+
+
+  .loading,
+  .empty {
+    color: #5f6368;
+  }
+
+
+  .empty {
+    padding: 24px;
+    text-align: center;
+  }
+
+
+  /* =========================================================
+     DETALHES
+     ========================================================= */
+
+  .detalhes {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px 32px;
+  }
+
+
+  .detalhe-label {
+    margin-bottom: 3px;
+    color: #5f6368;
+    font-size: 12px;
+  }
+
+
+  .detalhe-valor {
+    overflow-wrap: anywhere;
+    font-size: 15px;
+  }
+
+
+  /* =========================================================
+     PROCESSOS
+     ========================================================= */
+
+  #painelProcesso {
+    display: none;
+  }
+
+
+  .processo-topo {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+  }
+
+
+  .processo-numero {
+    margin: 0 0 4px;
+    font-size: 25px;
+  }
+
+
+  .processo-subtitulo {
+    margin: 0;
+    color: #5f6368;
+  }
+
+
+  .processo-info {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 20px;
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid #e8eaed;
+  }
+
+
+  /* =========================================================
+     ETAPAS
+     ========================================================= */
+
+  .processo-etapas {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+  }
+
+
+  .etapa {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    min-height: 58px;
+    padding: 16px;
+    border: 1px solid #dadce0;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #202124;
+    text-align: left;
+  }
+
+
+  button.etapa {
+    font: inherit;
+  }
+
+
+  .etapa-titulo {
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+
+  .etapa-direita {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+
+  .etapa-seta {
+    color: #1a73e8;
+    font-size: 18px;
+  }
+
+
+  .etapa-status {
+    flex-shrink: 0;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+
+  .etapa.concluida {
+    border-color: #ceead6;
+    background: #f6fff8;
+  }
+
+
+  .etapa.concluida .etapa-status {
+    color: #137333;
+  }
+
+
+  .etapa.incompleta {
+    border-color: #f6d58d;
+    background: #fffaf0;
+  }
+
+
+  .etapa.incompleta .etapa-status {
+    color: #b06000;
+  }
+
+
+  .etapa.pendente .etapa-status {
+    color: #5f6368;
+  }
+
+
+  .etapa-acao {
+    cursor: pointer;
+  }
+
+
+  .etapa-acao:hover {
+    border-color: #a8c7fa;
+    box-shadow: 0 1px 3px rgba(60, 64, 67, 0.12);
+  }
+
+
+  /* =========================================================
+     PROGRESSO
+     ========================================================= */
+
+  .progresso {
+    margin-top: 18px;
+  }
+
+
+  .progresso-info {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 7px;
+    color: #5f6368;
+    font-size: 12px;
+  }
+
+
+  .progresso-barra {
+    width: 100%;
+    height: 8px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #e8eaed;
+  }
+
+
+  .progresso-preenchimento {
+    height: 100%;
+    border-radius: 999px;
+    background: #1a73e8;
+    transition: width 0.2s ease;
+  }
+
+
+  /* =========================================================
+     PESQUISA
+     ========================================================= */
+
+  .search-box {
+    margin-bottom: 20px;
+  }
+
+
+  .search-box input {
+    max-width: 520px;
+  }
+
+
+  /* =========================================================
+     MAPA
+     ========================================================= */
+
+  .campo-mapa-acoes {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-end;
+  }
+
+
+  .mapa-propriedade {
+    width: 100%;
+    height: 460px;
+    margin-top: 16px;
+    overflow: hidden;
+    border: 1px solid #dadce0;
+    border-radius: 10px;
+    background: #f1f3f4;
+  }
+
+
+  .mapa-mensagem {
+    margin-top: 16px;
+    padding: 12px 14px;
+    border-radius: 6px;
+    background: #f1f3f4;
+    color: #5f6368;
+    font-size: 13px;
+  }
+
+
+  .mapa-aviso {
+    background: #fef7e0;
+    color: #8a4f00;
+  }
+
+
+  /* =========================================================
+     PATRIMÔNIO
+     ========================================================= */
+
+  .categoria-patrimonio {
+    margin-bottom: 22px;
+    overflow: hidden;
+    border: 1px solid #e1e4e8;
+    border-radius: 9px;
+  }
+
+
+  .categoria-patrimonio:last-child {
+    margin-bottom: 0;
+  }
+
+
+  .categoria-patrimonio-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 13px 16px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e8eaed;
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+
+  .categoria-patrimonio-header strong {
+    white-space: nowrap;
+    color: #174ea6;
+  }
+
+
+  .categoria-patrimonio table {
+    margin: 0;
+  }
+
+
+  .categoria-patrimonio tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+
+  .empty-category {
+    padding: 16px;
+    color: #80868b;
+    text-align: center;
+    font-size: 12px;
+  }
+
+
+  .patrimonio-lista-secundaria {
+    margin-top: 26px;
+  }
+
+
+  /* =========================================================
+     CONFIRMAÇÃO DE DÍVIDAS
+     ========================================================= */
+
+  .confirmation-box {
+    display: flex;
+    align-items: flex-start;
+    gap: 11px;
+    margin-top: 24px;
+    padding: 14px 16px;
+    border: 1px solid #dadce0;
+    border-radius: 8px;
+    background: #f8f9fa;
+    cursor: pointer;
+  }
+
+
+  .confirmation-box input {
+    width: auto;
+    margin: 2px 0 0;
+    flex-shrink: 0;
+  }
+
+
+  .confirmation-box span {
+    color: #3c4043;
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 1.45;
+  }
+
+
+  /* =========================================================
+     RESUMO PATRIMONIAL
+     ========================================================= */
+
+  .resumo-patrimonio {
+    max-width: 760px;
+  }
+
+
+  .resumo-linha {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 13px 0;
+    border-bottom: 1px solid #e8eaed;
+    font-size: 14px;
+  }
+
+
+  .resumo-linha strong {
+    white-space: nowrap;
+  }
+
+
+  .resumo-linha.secundaria {
+    color: #5f6368;
+  }
+
+
+  .resumo-linha.divida strong {
+    color: #b3261e;
+  }
+
+
+  .resumo-linha.destaque {
+    margin-top: 5px;
+    padding: 17px 14px;
+    border: 0;
+    border-radius: 7px;
+    background: #e8f0fe;
+    color: #174ea6;
+    font-size: 16px;
+  }
+
+
+  .resumo-nota {
+    margin-top: 14px;
+    color: #5f6368;
+    font-size: 11px;
+    line-height: 1.45;
+  }
+
+
+  /* =========================================================
+     RESPONSIVIDADE
+     ========================================================= */
+
+  @media (max-width: 1100px) {
+
+    .form-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+
+    .processo-info {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+
+    .processo-etapas {
+      grid-template-columns: 1fr;
+    }
+
+  }
+
+
+  @media (max-width: 760px) {
+
+    .app-header {
+      padding: 12px 18px;
+    }
+
+
+    .brand-logo {
+      width: 42px;
+      height: 42px;
+      flex-basis: 42px;
+    }
+
+
+    .brand-subtitle {
+      display: none;
+    }
+
+
+    .layout {
+      display: block;
+    }
+
+
+    nav {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding: 10px 12px;
+      border-right: 0;
+      border-bottom: 1px solid #dadce0;
+    }
+
+
+    .nav-button {
+      width: auto;
+      min-width: max-content;
+      margin: 0;
+    }
+
+
+    main {
+      padding: 18px;
+    }
+
+
+    .card {
+      padding: 18px;
+    }
+
+
+    .form-grid,
+    .detalhes,
+    .processo-info,
+    .processo-etapas {
+      grid-template-columns: 1fr;
+    }
+
+
+    .span-2 {
+      grid-column: span 1;
+    }
+
+
+    .processo-topo {
+      flex-direction: column;
+    }
+
+
+    .actions,
+    .processo-atalhos {
+      flex-direction: column;
+    }
+
+
+    .actions button,
+    .processo-atalhos button {
+      width: 100%;
+    }
+
+
+    .categoria-patrimonio-header {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
+
+    .resumo-linha {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+
+    .mapa-propriedade {
+      height: 360px;
+    }
+
+  }
+
+    /* =========================================================
+     V0.8 - IDENTIFICAÇÃO DA PROPOSTA
+     ========================================================= */
+
+  .tabela-formulario input {
+    min-width: 110px;
+  }
+
+
+  .tabela-formulario td:first-child {
+    min-width: 220px;
+  }
+
+
+  .campo-derivado {
+    background: #f1f3f4;
+    color: #5f6368;
+    font-weight: 600;
+  }
+
+
+  .resumo-usos-fontes {
+    display: grid;
+    grid-template-columns:
+      repeat(
+        3,
+        minmax(0, 1fr)
+      );
+    gap: 12px;
+    margin-top: 24px;
+  }
+
+
+  .resumo-usos-fontes > div {
+    padding: 14px 16px;
+    border: 1px solid #dadce0;
+    border-radius: 8px;
+    background: #f8f9fa;
+  }
+
+
+  .resumo-usos-fontes span {
+    display: block;
+    margin-bottom: 5px;
+    color: #5f6368;
+    font-size: 11px;
+    text-transform: uppercase;
+  }
+
+
+  .resumo-usos-fontes strong {
+    display: block;
+    font-size: 17px;
+  }
+
+
+  .balanceamento-card {
+    margin-top: 14px;
+    padding: 12px 14px;
+    border-radius: 7px;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+
+  .balanceamento-card.equilibrado {
+    border: 1px solid #ceead6;
+    background: #e6f4ea;
+    color: #137333;
+  }
+
+
+  .balanceamento-card.divergente {
+    border: 1px solid #f6d58d;
+    background: #fef7e0;
+    color: #754c00;
+  }
+
+
+  @media (max-width: 760px) {
+
+    .resumo-usos-fontes {
+      grid-template-columns: 1fr;
+    }
+
+  }
+
+    /* =========================================================
+     V0.9 - FLUXO DE CAIXA
+     ========================================================= */
+
+  .fluxo-form-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 20px;
+  }
+
+
+  .fluxo-form-header h3 {
+    margin-bottom: 8px;
+  }
+
+
+  .fluxo-atalhos-tipo {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+
+  .fluxo-anos-form {
+    display: grid;
+    grid-template-columns:
+      repeat(
+        7,
+        minmax(120px, 1fr)
+      );
+    gap: 10px;
+    overflow-x: auto;
+  }
+
+
+  .fluxo-grupo-titulo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 18px;
+  }
+
+
+  .fluxo-grupo-titulo h3 {
+    margin: 0;
+  }
+
+
+  .fluxo-grupo-titulo strong {
+    white-space: nowrap;
+    font-size: 16px;
+  }
+
+
+  .fluxo-grupo-titulo.receita strong {
+    color: #137333;
+  }
+
+
+  .fluxo-grupo-titulo.custo strong {
+    color: #b3261e;
+  }
+
+
+  .fluxo-tabela {
+    min-width: 1500px;
+  }
+
+
+  .fluxo-tabela th:first-child,
+  .fluxo-tabela td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    min-width: 190px;
+    background: #ffffff;
+  }
+
+
+  .fluxo-tabela thead th:first-child {
+    z-index: 2;
+    background: #ffffff;
+  }
+
+
+  .fluxo-resumo-tabela {
+    min-width: 1050px;
+  }
+
+
+  .fluxo-resumo-tabela th:first-child,
+  .fluxo-resumo-tabela td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    min-width: 190px;
+    background: #ffffff;
+  }
+
+
+  .fluxo-resumo-tabela thead th:first-child {
+    z-index: 2;
+  }
+
+
+  .fluxo-linha-receita {
+    color: #137333;
+  }
+
+
+  .fluxo-linha-total {
+    border-top: 2px solid #dadce0;
+  }
+
+
+  .fluxo-linha-resultado {
+    background: #f8f9fa;
+  }
+
+
+  .fluxo-linha-acumulado {
+    background: #e8f0fe;
+    color: #174ea6;
+  }
+
+
+  .fluxo-resultado-final {
+    max-width: 620px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    margin-top: 22px;
+    padding: 16px 18px;
+    border-radius: 8px;
+  }
+
+
+  .fluxo-resultado-final span {
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+
+  .fluxo-resultado-final strong {
+    white-space: nowrap;
+    font-size: 19px;
+  }
+
+
+  .fluxo-resultado-final.positivo {
+    border: 1px solid #ceead6;
+    background: #e6f4ea;
+    color: #137333;
+  }
+
+
+  .fluxo-resultado-final.negativo {
+    border: 1px solid #f4c7c3;
+    background: #fce8e6;
+    color: #b3261e;
+  }
+
+
+  @media (max-width: 1100px) {
+
+    .fluxo-anos-form {
+      grid-template-columns:
+        repeat(
+          4,
+          minmax(130px, 1fr)
+        );
+    }
+
+  }
+
+
+  @media (max-width: 760px) {
+
+    .fluxo-form-header {
+      flex-direction: column;
+    }
+
+
+    .fluxo-atalhos-tipo {
+      justify-content: flex-start;
+    }
+
+
+    .fluxo-anos-form {
+      grid-template-columns:
+        repeat(
+          2,
+          minmax(130px, 1fr)
+        );
+    }
+
+
+    .fluxo-grupo-titulo,
+    .fluxo-resultado-final {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
+  }
+
+    /* =========================================================
+     V0.10 - FINANCIAMENTO
+     ========================================================= */
+
+  .financiamento-resumo-cards {
+    display: grid;
+    grid-template-columns:
+      repeat(
+        4,
+        minmax(0, 1fr)
+      );
+    gap: 12px;
+    margin-top: 24px;
+  }
+
+
+  .financiamento-resumo-cards > div {
+    padding: 14px 16px;
+    border: 1px solid #dadce0;
+    border-radius: 8px;
+    background: #f8f9fa;
+  }
+
+
+  .financiamento-resumo-cards span {
+    display: block;
+    margin-bottom: 5px;
+    color: #5f6368;
+    font-size: 11px;
+    text-transform: uppercase;
+  }
+
+
+  .financiamento-resumo-cards strong {
+    display: block;
+    font-size: 17px;
+  }
+
+
+  .financiamento-lista-garantias {
+    margin-top: 26px;
+  }
+
+
+  .financiamento-cronograma {
+    min-width: 1400px;
+  }
+
+
+  .capacidade-ok,
+  .capacidade-insuficiente {
+    display: inline-block;
+    padding: 4px 7px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+
+  .capacidade-ok {
+    background: #e6f4ea;
+    color: #137333;
+  }
+
+
+  .capacidade-insuficiente {
+    background: #fce8e6;
+    color: #b3261e;
+  }
+
+
+  .capacidade-aviso {
+    margin-top: 18px;
+    padding: 13px 15px;
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+
+  .capacidade-aviso.suficiente {
+    border: 1px solid #ceead6;
+    background: #e6f4ea;
+    color: #137333;
+  }
+
+
+  .capacidade-aviso.insuficiente {
+    border: 1px solid #f4c7c3;
+    background: #fce8e6;
+    color: #b3261e;
+  }
+
+
+  @media (max-width: 1100px) {
+
+    .financiamento-resumo-cards {
+      grid-template-columns:
+        repeat(
+          2,
+          minmax(0, 1fr)
+        );
+    }
+
+  }
+
+
+  @media (max-width: 760px) {
+
+    .financiamento-resumo-cards {
+      grid-template-columns: 1fr;
+    }
+
+  }
+
+    /* =========================================================
+     FUNDERR v0.10.1
+     INTEGRAÇÃO GOVBR-DS
+     ========================================================= */
+
+
+  /* ---------------------------------------------------------
+     TOKENS FUNDERR → GOVBR-DS
+     --------------------------------------------------------- */
+
+  :root {
+
+    --funder-cor-primaria:
+      var(
+        --blue-warm-vivid-70,
+        #1351b4
+      );
+
+
+    --funder-cor-texto:
+      var(
+        --gray-80,
+        #333333
+      );
+
+
+    --funder-cor-texto-secundario:
+      var(
+        --gray-70,
+        #555555
+      );
+
+
+    --funder-superficie:
+      var(
+        --pure-0,
+        #ffffff
+      );
+
+
+    --funder-fundo:
+      var(
+        --gray-2,
+        #f8f8f8
+      );
+
+
+    --funder-borda:
+      var(
+        --gray-20,
+        #cccccc
+      );
+
+  }
+
+
+  body {
+
+    background:
+      var(
+        --funder-fundo
+      );
+
+    color:
+      var(
+        --funder-cor-texto
+      );
+
+  }
+
+
+  /* ---------------------------------------------------------
+     HEADER GOVBR-DS
+     --------------------------------------------------------- */
+
+  .govbr-header-shell {
+
+    position:
+      relative;
+
+    z-index:
+      20;
+
+    background:
+      var(
+        --funder-superficie
+      );
+
+  }
+
+
+  #funderHeaderGovBR {
+
+    display:
+      block;
+
+    width:
+      100%;
+
+  }
+
+
+  .govbr-app-version {
+
+    position:
+      absolute;
+
+    top:
+      16px;
+
+    right:
+      28px;
+
+    z-index:
+      3;
+
+    padding:
+      5px 9px;
+
+    border:
+      1px solid
+      var(
+        --gray-10,
+        #e6e6e6
+      );
+
+    border-radius:
+      999px;
+
+    background:
+      var(
+        --gray-2,
+        #f8f8f8
+      );
+
+    color:
+      var(
+        --gray-70,
+        #555555
+      );
+
+    font-size:
+      11px;
+
+    font-weight:
+      600;
+
+  }
+
+
+  /*
+   * Enquanto o componente ainda não foi
+   * registrado, ele permanece oculto.
+   */
+  br-header[hidden] {
+
+    display:
+      none !important;
+
+  }
+
+
+  /* ---------------------------------------------------------
+     GOVBR BUTTON
+     --------------------------------------------------------- */
+
+  br-button {
+
+    vertical-align:
+      middle;
+
+  }
+
+
+  /*
+   * Elemento interno oficialmente exposto pelo
+   * componente GovBR-DS.
+   */
+  br-button::part(button) {
+
+    white-space:
+      nowrap;
+
+  }
+
+
+  /*
+   * As action-link do sistema viraram botão
+   * terciário GovBR-DS.
+   */
+  br-button.action-link::part(button) {
+
+    min-height:
+      auto;
+
+  }
+
+
+  br-button.action-link.danger::part(button) {
+
+    color:
+      #b3261e;
+
+  }
+
+
+  /*
+   * Layouts que anteriormente selecionavam apenas
+   * button precisam também aceitar br-button.
+   */
+
+  .actions br-button,
+  .processo-atalhos br-button,
+  .fluxo-atalhos-tipo br-button {
+
+    flex-shrink:
+      0;
+
+  }
+
+
+  /* ---------------------------------------------------------
+     PROCESSO / STEP
+     --------------------------------------------------------- */
+
+  .processo-step-govbr {
+
+    margin-top:
+      28px;
+
+    margin-bottom:
+      10px;
+
+    padding:
+      20px 12px 10px;
+
+    border-top:
+      1px solid
+      var(
+        --gray-10,
+        #e6e6e6
+      );
+
+    overflow-x:
+      auto;
+
+  }
+
+
+  .processo-step-govbr br-step {
+
+    display:
+      block;
+
+    min-width:
+      760px;
+
+  }
+
+
+  /*
+   * O Step desta versão é apenas uma visão
+   * resumida. Os cards abaixo continuam sendo
+   * a área interativa.
+   */
+  .processo-step-govbr {
+
+    pointer-events:
+      none;
+
+    user-select:
+      none;
+
+  }
+
+
+  /* ---------------------------------------------------------
+     ALINHAMENTO VISUAL COM OS TOKENS DO GOVBR-DS
+     --------------------------------------------------------- */
+
+  .card {
+
+    background:
+      var(
+        --pure-0,
+        #ffffff
+      );
+
+    border-color:
+      var(
+        --gray-10,
+        #e6e6e6
+      );
+
+  }
+
+
+  .page-header p,
+  .section-description,
+  .field-help,
+  .detalhe-label {
+
+    color:
+      var(
+        --gray-70,
+        #555555
+      );
+
+  }
+
+
+  .nav-button.ativo {
+
+    color:
+      var(
+        --blue-warm-vivid-70,
+        #1351b4
+      );
+
+  }
+
+
+  .progresso-preenchimento {
+
+    background:
+      var(
+        --blue-warm-vivid-70,
+        #1351b4
+      );
+
+  }
+
+
+  /* ---------------------------------------------------------
+     MOBILE
+     --------------------------------------------------------- */
+
+  @media (
+    max-width: 760px
+  ) {
+
+    .govbr-app-version {
+
+      top:
+        10px;
+
+      right:
+        12px;
+
+      font-size:
+        10px;
+
+    }
+
+
+    .processo-step-govbr {
+
+      margin-left:
+        -8px;
+
+      margin-right:
+        -8px;
+
+      padding-left:
+        8px;
+
+      padding-right:
+        8px;
+
+    }
+
+
+    .actions br-button,
+    .processo-atalhos br-button {
+
+      width:
+        100%;
+
+    }
+
+
+    .actions br-button::part(button),
+    .processo-atalhos br-button::part(button) {
+
+      width:
+        100%;
+
+      justify-content:
+        center;
+
+    }
+
+  }
+
+    /* =========================================================
+     FUNDERR v0.10.2
+     MIGRAÇÃO AMPLA GOVBR-DS
+     ========================================================= */
+
+
+  /* ---------------------------------------------------------
+     PROXIES DE COMPATIBILIDADE
+     --------------------------------------------------------- */
+
+  .govbr-native-proxy {
+
+    position:
+      absolute !important;
+
+    width:
+      1px !important;
+
+    height:
+      1px !important;
+
+    margin:
+      -1px !important;
+
+    padding:
+      0 !important;
+
+    overflow:
+      hidden !important;
+
+    clip:
+      rect(0 0 0 0) !important;
+
+    clip-path:
+      inset(50%) !important;
+
+    white-space:
+      nowrap !important;
+
+    border:
+      0 !important;
+
+    opacity:
+      0 !important;
+
+    pointer-events:
+      none !important;
+
+  }
+
+
+  /* ---------------------------------------------------------
+     FORM CONTROLS
+     --------------------------------------------------------- */
+
+  br-input,
+  br-textarea,
+  br-select,
+  br-datetime-picker {
+
+    display:
+      block;
+
+    width:
+      100%;
+
+    min-width:
+      0;
+
+  }
+
+
+  .form-grid
+    br-input,
+  .form-grid
+    br-textarea,
+  .form-grid
+    br-select,
+  .form-grid
+    br-datetime-picker {
+
+    width:
+      100%;
+
+  }
+
+
+  br-input.campo-derivado::part(input) {
+
+    background:
+      var(
+        --gray-2,
+        #f8f8f8
+      );
+
+    color:
+      var(
+        --gray-70,
+        #555555
+      );
+
+    font-weight:
+      600;
+
+  }
+
+
+  .govbr-date-label {
+
+    display:
+      block;
+
+    margin-bottom:
+      6px;
+
+    color:
+      var(
+        --gray-80,
+        #333333
+      );
+
+    font-size:
+      13px;
+
+    font-weight:
+      600;
+
+  }
+
+
+  /* ---------------------------------------------------------
+     CARD
+     --------------------------------------------------------- */
+
+  br-card.card {
+
+    display:
+      block;
+
+    width:
+      100%;
+
+    margin-bottom:
+      24px;
+
+    padding:
+      0 !important;
+
+    border:
+      0 !important;
+
+    border-radius:
+      0 !important;
+
+    background:
+      transparent !important;
+
+  }
+
+
+  br-card.card::part(wrapper) {
+
+    overflow:
+      visible;
+
+    border:
+      1px solid
+      var(
+        --gray-10,
+        #e6e6e6
+      );
+
+    border-radius:
+      8px;
+
+    background:
+      var(
+        --pure-0,
+        #ffffff
+      );
+
+  }
+
+
+  br-card.card::part(content) {
+
+    padding:
+      24px;
+
+  }
+
+
+  /* ---------------------------------------------------------
+     CHECKBOX / CONFIRMAÇÃO
+     --------------------------------------------------------- */
+
+  br-checkbox.confirmation-box {
+
+    display:
+      block;
+
+    width:
+      100%;
+
+    margin-top:
+      24px;
+
+    padding:
+      14px 16px;
+
+    border:
+      1px solid
+      var(
+        --gray-20,
+        #cccccc
+      );
+
+    border-radius:
+      8px;
+
+    background:
+      var(
+        --gray-2,
+        #f8f8f8
+      );
+
+  }
+
+
+  /* ---------------------------------------------------------
+     STATUS / TAG
+     --------------------------------------------------------- */
+
+  br-tag.status,
+  br-tag.cadastro-ok,
+  br-tag.cadastro-pendente,
+  br-tag.capacidade-ok,
+  br-tag.capacidade-insuficiente {
+
+    padding:
+      0 !important;
+
+    border:
+      0 !important;
+
+    background:
+      transparent !important;
+
+    color:
+      inherit !important;
+
+  }
+
+
+  br-tag.status::part(tag) {
+
+    background:
+      #fef7e0;
+
+    color:
+      #8a4f00;
+
+  }
+
+
+  br-tag.status-concluido::part(tag),
+  br-tag.cadastro-ok::part(tag),
+  br-tag.capacidade-ok::part(tag) {
+
+    background:
+      #e6f4ea;
+
+    color:
+      #137333;
+
+  }
+
+
+  br-tag.status-revisao::part(tag),
+  br-tag.cadastro-pendente::part(tag) {
+
+    background:
+      #fef7e0;
+
+    color:
+      #8a4f00;
+
+  }
+
+
+  br-tag.capacidade-insuficiente::part(tag) {
+
+    background:
+      #fce8e6;
+
+    color:
+      #b3261e;
+
+  }
+
+
+  /* ---------------------------------------------------------
+     MESSAGE
+     --------------------------------------------------------- */
+
+  br-message.message {
+
+    display:
+      block;
+
+    margin-top:
+      16px;
+
+  }
+
+
+  br-message.message:empty {
+
+    display:
+      none;
+
+  }
+
+
+  br-message.pendencias-card,
+  br-message.balanceamento-card,
+  br-message.capacidade-aviso,
+  br-message.mapa-mensagem {
+
+    display:
+      block;
+
+    margin-top:
+      16px;
+
+  }
+
+
+  /*
+   * Estado visual fica sob controle do
+   * próprio br-message.
+   */
+  br-message.sucesso,
+  br-message.erro,
+  br-message.loading {
+
+    color:
+      inherit;
+
+  }
+
+
+  /* ---------------------------------------------------------
+     NAVIGATION
+     --------------------------------------------------------- */
+
+  br-button.nav-button {
+
+    display:
+      block;
+
+    width:
+      100%;
+
+    margin-bottom:
+      6px;
+
+  }
+
+
+  br-button.nav-button::part(button) {
+
+    width:
+      100%;
+
+    justify-content:
+      flex-start;
+
+    border-radius:
+      4px;
+
+  }
+
+
+  br-button.nav-button.ativo::part(button) {
+
+    background:
+      var(
+        --blue-warm-vivid-10,
+        #e7f0ff
+      );
+
+    color:
+      var(
+        --blue-warm-vivid-70,
+        #1351b4
+      );
+
+    font-weight:
+      700;
+
+  }
+
+
+  br-button.table-sort-button::part(button) {
+
+    min-height:
+      auto;
+
+    padding:
+      0;
+
+    font-size:
+      12px;
+
+    font-weight:
+      700;
+
+  }
+
+
+  /* ---------------------------------------------------------
+     ACTION LINKS
+     --------------------------------------------------------- */
+
+  br-button.action-link::part(button) {
+
+    min-height:
+      auto;
+
+    padding:
+      4px 6px;
+
+  }
+
+
+  br-button.action-link.danger::part(button) {
+
+    color:
+      #b3261e;
+
+  }
+
+
+  /* ---------------------------------------------------------
+     TABLE GOVBR
+     --------------------------------------------------------- */
+
+  br-table {
+
+    display:
+      block;
+
+    width:
+      100%;
+
+  }
+
+
+  br-table::part(container) {
+
+    width:
+      100%;
+
+  }
+
+
+  br-table-header-cell,
+  br-table-cell {
+
+    min-width:
+      0;
+
+  }
+
+
+  br-table-cell.numero {
+
+    font-variant-numeric:
+      tabular-nums;
+
+  }
+
+
+  br-table-row.clickable {
+
+    cursor:
+      pointer;
+
+  }
+
+
+  br-table-row.clickable:hover {
+
+    background:
+      var(
+        --gray-2,
+        #f8f8f8
+      );
+
+  }
+
+
+  br-table-cell.empty-category {
+
+    color:
+      var(
+        --gray-60,
+        #666666
+      );
+
+    text-align:
+      center;
+
+  }
+
+
+  /*
+   * Fluxo de caixa continua largo,
+   * permitindo rolagem horizontal.
+   */
+  br-table.fluxo-tabela {
+
+    min-width:
+      1500px;
+
+  }
+
+
+  br-table.fluxo-resumo-tabela {
+
+    min-width:
+      1050px;
+
+  }
+
+
+  br-table.financiamento-cronograma {
+
+    min-width:
+      1400px;
+
+  }
+
+
+  /*
+   * Primeira coluna fixa nas tabelas financeiras.
+   */
+  br-table.fluxo-tabela
+    br-table-header-cell:first-child,
+  br-table.fluxo-tabela
+    br-table-cell:first-child,
+  br-table.fluxo-resumo-tabela
+    br-table-header-cell:first-child,
+  br-table.fluxo-resumo-tabela
+    br-table-cell:first-child {
+
+    position:
+      sticky;
+
+    left:
+      0;
+
+    z-index:
+      2;
+
+    background:
+      var(
+        --pure-0,
+        #ffffff
+      );
+
+  }
+
+
+  /* ---------------------------------------------------------
+     MOBILE
+     --------------------------------------------------------- */
+
+  @media (
+    max-width: 760px
+  ) {
+
+    br-card.card::part(content) {
+
+      padding:
+        18px;
+
+    }
+
+
+    br-button.nav-button {
+
+      display:
+        inline-block;
+
+      width:
+        auto;
+
+      min-width:
+        max-content;
+
+      margin:
+        0;
+
+    }
+
+
+    br-button.nav-button::part(button) {
+
+      width:
+        auto;
+
+    }
+
+
+    .actions
+      br-button,
+    .processo-atalhos
+      br-button {
+
+      width:
+        100%;
+
+    }
+
+
+    .actions
+      br-button::part(button),
+    .processo-atalhos
+      br-button::part(button) {
+
+      width:
+        100%;
+
+      justify-content:
+        center;
+
+    }
+
+  }
+
+</style>

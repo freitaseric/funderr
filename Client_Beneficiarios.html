@@ -1,0 +1,1313 @@
+<script>
+
+  let beneficiariosDisponiveis =
+    [];
+
+  let ordenacaoBeneficiarios = {
+    campo:
+      'nome',
+
+    direcao:
+      'asc'
+  };
+
+
+  function registrarEventosBeneficiarios() {
+
+    document
+      .getElementById(
+        'formBeneficiario'
+      )
+      .addEventListener(
+        'submit',
+        salvarBeneficiario
+      );
+
+
+    document
+      .getElementById(
+        'estadoCivil'
+      )
+      .addEventListener(
+        'change',
+        atualizarVisibilidadeConjuge
+      );
+
+
+    document
+      .getElementById(
+        'buscaBeneficiarios'
+      )
+      .addEventListener(
+        'input',
+        renderizarBeneficiariosFiltrados
+      );
+
+
+    [
+      'cpf',
+      'conjugeCpf'
+    ].forEach(
+      id => {
+
+        document
+          .getElementById(
+            id
+          )
+          .addEventListener(
+            'input',
+            event => {
+
+              event.target.value =
+                formatarCpf(
+                  event.target.value
+                );
+
+            }
+          );
+
+      }
+    );
+
+
+    [
+      'telefone',
+      'referencia1Telefone',
+      'referencia2Telefone'
+    ].forEach(
+      id => {
+
+        document
+          .getElementById(
+            id
+          )
+          .addEventListener(
+            'input',
+            event => {
+
+              event.target.value =
+                formatarTelefone(
+                  event.target.value
+                );
+
+            }
+          );
+
+      }
+    );
+
+  }
+
+
+  function estadoCivilPossuiConjuge_(
+    estadoCivil
+  ) {
+
+    return [
+      'CASADO',
+      'UNIAO_ESTAVEL'
+    ].includes(
+      estadoCivil
+    );
+  }
+
+
+  function atualizarVisibilidadeConjuge() {
+
+    const estadoCivil =
+      document.getElementById(
+        'estadoCivil'
+      ).value;
+
+
+    const bloco =
+      document.getElementById(
+        'blocoConjuge'
+      );
+
+
+    const mostrar =
+      estadoCivilPossuiConjuge_(
+        estadoCivil
+      );
+
+
+    bloco.hidden =
+      !mostrar;
+
+
+    if (!mostrar) {
+
+      document
+        .getElementById(
+          'conjugeNome'
+        )
+        .value =
+          '';
+
+
+      document
+        .getElementById(
+          'conjugeRg'
+        )
+        .value =
+          '';
+
+
+      document
+        .getElementById(
+          'conjugeCpf'
+        )
+        .value =
+          '';
+
+    }
+
+  }
+
+
+  function salvarBeneficiario(
+    event
+  ) {
+
+    event.preventDefault();
+
+
+    const botao =
+      document.getElementById(
+        'btnSalvarBeneficiario'
+      );
+
+
+    const mensagem =
+      document.getElementById(
+        'mensagemBeneficiario'
+      );
+
+
+    const id =
+      document.getElementById(
+        'beneficiarioId'
+      ).value;
+
+
+    const estadoCivil =
+      document.getElementById(
+        'estadoCivil'
+      ).value;
+
+
+    const possuiConjuge =
+      estadoCivilPossuiConjuge_(
+        estadoCivil
+      );
+
+
+    const dados = {
+
+      id,
+
+      nome:
+        document.getElementById(
+          'nome'
+        ).value,
+
+      apelido:
+        document.getElementById(
+          'apelido'
+        ).value,
+
+      cpf:
+        document.getElementById(
+          'cpf'
+        ).value,
+
+      rg:
+        document.getElementById(
+          'rg'
+        ).value,
+
+      telefone:
+        document.getElementById(
+          'telefone'
+        ).value,
+
+      dataNascimento:
+        document.getElementById(
+          'dataNascimento'
+        ).value,
+
+      nacionalidade:
+        document.getElementById(
+          'nacionalidade'
+        ).value,
+
+      naturalidade:
+        document.getElementById(
+          'naturalidade'
+        ).value,
+
+      estadoCivil,
+
+      profissao:
+        document.getElementById(
+          'profissao'
+        ).value,
+
+      escolaridade:
+        document.getElementById(
+          'escolaridade'
+        ).value,
+
+      endereco:
+        document.getElementById(
+          'enderecoBeneficiario'
+        ).value,
+
+      dependentes:
+        document.getElementById(
+          'dependentes'
+        ).value,
+
+      conjugeNome:
+        possuiConjuge
+          ? document
+              .getElementById(
+                'conjugeNome'
+              ).value
+          : '',
+
+      conjugeRg:
+        possuiConjuge
+          ? document
+              .getElementById(
+                'conjugeRg'
+              ).value
+          : '',
+
+      conjugeCpf:
+        possuiConjuge
+          ? document
+              .getElementById(
+                'conjugeCpf'
+              ).value
+          : '',
+
+      referencias: [
+        {
+          ordem: 1,
+
+          nome:
+            document
+              .getElementById(
+                'referencia1Nome'
+              ).value,
+
+          telefone:
+            document
+              .getElementById(
+                'referencia1Telefone'
+              ).value
+        },
+
+        {
+          ordem: 2,
+
+          nome:
+            document
+              .getElementById(
+                'referencia2Nome'
+              ).value,
+
+          telefone:
+            document
+              .getElementById(
+                'referencia2Telefone'
+              ).value
+        }
+      ]
+    };
+
+
+    botao.disabled =
+      true;
+
+
+    mensagem.className =
+      'message loading';
+
+
+    mensagem.textContent =
+      id
+        ? 'Salvando alterações...'
+        : 'Cadastrando beneficiário...';
+
+
+    google.script.run
+
+      .withSuccessHandler(
+        () => {
+
+          marcarFormularioSalvo();
+
+          limparFormularioBeneficiario_();
+
+
+          mensagem.className =
+            'message sucesso';
+
+
+          mensagem.textContent =
+            id
+              ? 'Beneficiário atualizado com sucesso.'
+              : 'Beneficiário cadastrado com sucesso.';
+
+
+          botao.disabled =
+            false;
+
+
+          carregarBeneficiarios();
+
+        }
+      )
+
+      .withFailureHandler(
+        erro => {
+
+          mensagem.className =
+            'message erro';
+
+
+          mensagem.textContent =
+            erro.message ||
+            String(erro);
+
+
+          botao.disabled =
+            false;
+
+        }
+      )
+
+      .salvarBeneficiario(
+        dados
+      );
+
+  }
+
+
+  function carregarBeneficiarios() {
+
+    google.script.run
+
+      .withSuccessHandler(
+        beneficiarios => {
+
+          beneficiariosDisponiveis =
+            beneficiarios;
+
+
+          renderizarBeneficiariosFiltrados();
+
+
+          preencherSelectBeneficiarios(
+            beneficiarios
+          );
+
+        }
+      )
+
+      .withFailureHandler(
+        erro => {
+
+          document
+            .getElementById(
+              'listaBeneficiarios'
+            )
+            .innerHTML = `
+
+              <div class="erro">
+                ${escaparHtml(
+                  erro.message ||
+                  String(erro)
+                )}
+              </div>
+
+            `;
+
+        }
+      )
+
+      .listarBeneficiarios();
+
+  }
+
+
+  function ordenarBeneficiarios(
+    campo
+  ) {
+
+    if (
+      ordenacaoBeneficiarios.campo ===
+      campo
+    ) {
+
+      ordenacaoBeneficiarios.direcao =
+        ordenacaoBeneficiarios.direcao ===
+        'asc'
+          ? 'desc'
+          : 'asc';
+
+    } else {
+
+      ordenacaoBeneficiarios.campo =
+        campo;
+
+      ordenacaoBeneficiarios.direcao =
+        'asc';
+
+    }
+
+
+    renderizarBeneficiariosFiltrados();
+
+  }
+
+
+  function renderizarBeneficiariosFiltrados() {
+
+    const termo =
+      normalizarBusca(
+        document
+          .getElementById(
+            'buscaBeneficiarios'
+          )
+          .value
+      );
+
+
+    let dados =
+      beneficiariosDisponiveis
+        .filter(
+          item => {
+
+            const texto =
+              normalizarBusca([
+                item.nome,
+                item.cpf,
+                item.rg,
+                item.telefone
+              ].join(' '));
+
+
+            return (
+              !termo ||
+              texto.includes(
+                termo
+              )
+            );
+
+          }
+        );
+
+
+    dados =
+      [...dados]
+        .sort(
+          (a, b) => {
+
+            const campo =
+              ordenacaoBeneficiarios.campo;
+
+
+            const valorA =
+              String(
+                a[campo] ?? ''
+              );
+
+
+            const valorB =
+              String(
+                b[campo] ?? ''
+              );
+
+
+            const resultado =
+              valorA.localeCompare(
+                valorB,
+                'pt-BR',
+                {
+                  numeric:
+                    true
+                }
+              );
+
+
+            return (
+              ordenacaoBeneficiarios.direcao ===
+              'asc'
+                ? resultado
+                : -resultado
+            );
+
+          }
+        );
+
+
+    renderizarBeneficiarios(
+      dados
+    );
+
+  }
+
+
+  function renderizarBeneficiarios(
+    beneficiarios
+  ) {
+
+    const container =
+      document.getElementById(
+        'listaBeneficiarios'
+      );
+
+
+    if (!beneficiarios.length) {
+
+      container.innerHTML = `
+
+        <div class="empty">
+          Nenhum beneficiário encontrado.
+        </div>
+
+      `;
+
+      return;
+    }
+
+
+    const linhas =
+      beneficiarios
+        .map(
+          item => {
+
+            const faltantes =
+              item.camposFaltantes || [];
+
+
+            return `
+
+              <tr
+                class="clickable"
+                onclick="editarBeneficiario('${escaparAtributo(item.id)}')"
+              >
+
+                <td>
+                  <strong>
+                    ${escaparHtml(item.nome)}
+                  </strong>
+                </td>
+
+                <td>
+                  ${escaparHtml(
+                    formatarCpf(
+                      item.cpf
+                    )
+                  )}
+                </td>
+
+                <td>
+                  ${escaparHtml(item.rg)}
+                </td>
+
+                <td>
+                  ${escaparHtml(
+                    formatarTelefone(
+                      item.telefone
+                    )
+                  )}
+                </td>
+
+                <td>
+
+                  <span
+                    class="${
+                      item.cadastroAmpliadoCompleto
+                        ? 'cadastro-ok'
+                        : 'cadastro-pendente'
+                    }"
+                  >
+                    ${
+                      item.cadastroAmpliadoCompleto
+                        ? 'COMPLETO'
+                        : `INCOMPLETO • ${item.percentualCadastro}%`
+                    }
+                  </span>
+
+                  ${
+                    faltantes.length
+                      ? `
+                        <div class="faltantes-mini">
+                          Falta: ${escaparHtml(
+                            faltantes.join(', ')
+                          )}
+                        </div>
+                      `
+                      : ''
+                  }
+
+                </td>
+
+              </tr>
+
+            `;
+
+          }
+        )
+        .join('');
+
+
+    container.innerHTML = `
+
+      <div class="table-wrapper">
+
+        <table>
+
+          <thead>
+
+            <tr>
+
+              <th>
+                <button
+                  class="table-sort-button"
+                  onclick="ordenarBeneficiarios('nome')"
+                >
+                  Nome
+                </button>
+              </th>
+
+              <th>
+                CPF
+              </th>
+
+              <th>
+                RG
+              </th>
+
+              <th>
+                Telefone
+              </th>
+
+              <th>
+                Cadastro
+              </th>
+
+            </tr>
+
+          </thead>
+
+          <tbody>
+            ${linhas}
+          </tbody>
+
+        </table>
+
+      </div>
+
+    `;
+
+  }
+
+
+  function editarBeneficiario(
+    id
+  ) {
+
+    if (
+      !confirmarDescartarAlteracoes()
+    ) {
+      return;
+    }
+
+
+    google.script.run
+
+      .withSuccessHandler(
+        beneficiario => {
+
+          document
+            .getElementById(
+              'beneficiarioId'
+            )
+            .value =
+              beneficiario.id;
+
+
+          document
+            .getElementById(
+              'nome'
+            )
+            .value =
+              beneficiario.nome;
+
+
+          document
+            .getElementById(
+              'apelido'
+            )
+            .value =
+              beneficiario.apelido;
+
+
+          document
+            .getElementById(
+              'cpf'
+            )
+            .value =
+              formatarCpf(
+                beneficiario.cpf
+              );
+
+
+          document
+            .getElementById(
+              'rg'
+            )
+            .value =
+              beneficiario.rg;
+
+
+          document
+            .getElementById(
+              'telefone'
+            )
+            .value =
+              formatarTelefone(
+                beneficiario.telefone
+              );
+
+
+          document
+            .getElementById(
+              'dataNascimento'
+            )
+            .value =
+              beneficiario.dataNascimento;
+
+
+          document
+            .getElementById(
+              'nacionalidade'
+            )
+            .value =
+              beneficiario.nacionalidade;
+
+
+          document
+            .getElementById(
+              'naturalidade'
+            )
+            .value =
+              beneficiario.naturalidade;
+
+
+          selecionarOpcaoCompatibilidade(
+            document.getElementById(
+              'estadoCivil'
+            ),
+            beneficiario.estadoCivil
+          );
+
+
+          document
+            .getElementById(
+              'profissao'
+            )
+            .value =
+              beneficiario.profissao;
+
+
+          selecionarOpcaoCompatibilidade(
+            document.getElementById(
+              'escolaridade'
+            ),
+            beneficiario.escolaridade
+          );
+
+
+          document
+            .getElementById(
+              'enderecoBeneficiario'
+            )
+            .value =
+              beneficiario.endereco;
+
+
+          document
+            .getElementById(
+              'dependentes'
+            )
+            .value =
+              beneficiario.dependentes;
+
+
+          document
+            .getElementById(
+              'conjugeNome'
+            )
+            .value =
+              beneficiario.conjugeNome;
+
+
+          document
+            .getElementById(
+              'conjugeRg'
+            )
+            .value =
+              beneficiario.conjugeRg;
+
+
+          document
+            .getElementById(
+              'conjugeCpf'
+            )
+            .value =
+              formatarCpf(
+                beneficiario.conjugeCpf
+              );
+
+
+          document
+            .getElementById(
+              'blocoConjuge'
+            )
+            .hidden =
+              !estadoCivilPossuiConjuge_(
+                document
+                  .getElementById(
+                    'estadoCivil'
+                  )
+                  .value
+              );
+
+
+          const refs =
+            beneficiario.referencias ||
+            [];
+
+
+          const ref1 =
+            refs.find(
+              item =>
+                Number(
+                  item.ordem
+                ) === 1
+            ) || {};
+
+
+          const ref2 =
+            refs.find(
+              item =>
+                Number(
+                  item.ordem
+                ) === 2
+            ) || {};
+
+
+          document
+            .getElementById(
+              'referencia1Nome'
+            )
+            .value =
+              ref1.nome || '';
+
+
+          document
+            .getElementById(
+              'referencia1Telefone'
+            )
+            .value =
+              formatarTelefone(
+                ref1.telefone
+              );
+
+
+          document
+            .getElementById(
+              'referencia2Nome'
+            )
+            .value =
+              ref2.nome || '';
+
+
+          document
+            .getElementById(
+              'referencia2Telefone'
+            )
+            .value =
+              formatarTelefone(
+                ref2.telefone
+              );
+
+
+          mostrarPendenciasBeneficiario(
+            beneficiario
+          );
+
+
+          document
+            .getElementById(
+              'tituloFormularioBeneficiario'
+            )
+            .textContent =
+              'Editar beneficiário';
+
+
+          document
+            .getElementById(
+              'btnSalvarBeneficiario'
+            )
+            .textContent =
+              'Salvar alterações';
+
+
+          document
+            .getElementById(
+              'btnCancelarEdicaoBeneficiario'
+            )
+            .style.display =
+              'inline-block';
+
+
+          document
+            .getElementById(
+              'mensagemBeneficiario'
+            )
+            .textContent =
+              '';
+
+
+          marcarFormularioSalvo();
+
+
+          document
+            .getElementById(
+              'cardFormularioBeneficiario'
+            )
+            .scrollIntoView({
+              behavior:
+                'smooth',
+
+              block:
+                'start'
+            });
+
+        }
+      )
+
+      .withFailureHandler(
+        erro => {
+
+          alert(
+            erro.message ||
+            String(erro)
+          );
+
+        }
+      )
+
+      .buscarBeneficiario(
+        id
+      );
+
+  }
+
+
+  function mostrarPendenciasBeneficiario(
+    beneficiario
+  ) {
+
+    const container =
+      document.getElementById(
+        'resumoPendenciasBeneficiario'
+      );
+
+
+    const faltantes =
+      beneficiario.camposFaltantes ||
+      [];
+
+
+    if (
+      !faltantes.length
+    ) {
+
+      container.hidden =
+        false;
+
+
+      container.className =
+        'pendencias-card completa';
+
+
+      container.innerHTML =
+        'Cadastro completo.';
+
+      return;
+    }
+
+
+    container.hidden =
+      false;
+
+
+    container.className =
+      'pendencias-card';
+
+
+    container.innerHTML = `
+
+      <strong>
+        Cadastro ${beneficiario.percentualCadastro}% concluído.
+      </strong>
+
+      <div>
+        Para concluir, informe:
+        ${escaparHtml(
+          faltantes.join(', ')
+        )}.
+      </div>
+
+    `;
+
+  }
+
+
+  function selecionarOpcaoCompatibilidade(
+    select,
+    valor
+  ) {
+
+    if (!valor) {
+      select.value = '';
+      return;
+    }
+
+
+    const existe =
+      [...select.options]
+        .some(
+          option =>
+            option.value === valor
+        );
+
+
+    if (!existe) {
+
+      const option =
+        document.createElement(
+          'option'
+        );
+
+
+      option.value =
+        valor;
+
+
+      option.textContent =
+        `${valor} (valor anterior)`;
+
+
+      select.appendChild(
+        option
+      );
+
+    }
+
+
+    select.value =
+      valor;
+
+  }
+
+
+  function novoBeneficiario() {
+
+    if (
+      !confirmarDescartarAlteracoes()
+    ) {
+      return;
+    }
+
+
+    limparFormularioBeneficiario_();
+
+  }
+
+
+  function limparFormularioBeneficiario_() {
+
+    document
+      .getElementById(
+        'formBeneficiario'
+      )
+      .reset();
+
+
+    document
+      .getElementById(
+        'beneficiarioId'
+      )
+      .value =
+        '';
+
+
+    document
+      .getElementById(
+        'nacionalidade'
+      )
+      .value =
+        'BRASILEIRA';
+
+
+    document
+      .getElementById(
+        'blocoConjuge'
+      )
+      .hidden =
+        true;
+
+
+    document
+      .getElementById(
+        'resumoPendenciasBeneficiario'
+      )
+      .hidden =
+        true;
+
+
+    document
+      .getElementById(
+        'tituloFormularioBeneficiario'
+      )
+      .textContent =
+        'Novo beneficiário';
+
+
+    document
+      .getElementById(
+        'btnSalvarBeneficiario'
+      )
+      .textContent =
+        'Cadastrar';
+
+
+    document
+      .getElementById(
+        'btnSalvarBeneficiario'
+      )
+      .disabled =
+        false;
+
+
+    document
+      .getElementById(
+        'btnCancelarEdicaoBeneficiario'
+      )
+      .style.display =
+        'none';
+
+
+    marcarFormularioSalvo();
+
+  }
+
+
+  function preencherSelectBeneficiarios(
+    beneficiarios
+  ) {
+
+    const ids = [
+      'beneficiarioProcesso',
+      'beneficiarioPropriedade'
+    ];
+
+
+    ids.forEach(
+      id => {
+
+        const select =
+          document.getElementById(
+            id
+          );
+
+
+        if (!select) {
+          return;
+        }
+
+
+        const valorAtual =
+          select.value;
+
+
+        select.innerHTML = `
+
+          <option value="">
+            Selecione...
+          </option>
+
+        `;
+
+
+        beneficiarios.forEach(
+          item => {
+
+            const option =
+              document.createElement(
+                'option'
+              );
+
+
+            option.value =
+              item.id;
+
+
+            option.textContent =
+              `${item.nome} — CPF ${formatarCpf(item.cpf)}`;
+
+
+            select.appendChild(
+              option
+            );
+
+          }
+        );
+
+
+        if (
+          [...select.options]
+            .some(
+              option =>
+                option.value ===
+                valorAtual
+            )
+        ) {
+          select.value =
+            valorAtual;
+        }
+
+      }
+    );
+
+
+    if (
+      typeof atualizarSelectPropriedadesProcesso ===
+      'function'
+    ) {
+      atualizarSelectPropriedadesProcesso();
+    }
+
+  }
+
+</script>

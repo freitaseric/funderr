@@ -1,0 +1,3211 @@
+<!-- =========================================================
+     FUNDERR v0.10.2
+     MIGRAÇÃO COMPLETA GOVBR-DS
+     ========================================================= -->
+
+<link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/@govbr-ds/core@3.7.0/dist/core-tokens.min.css"
+>
+
+<script
+  type="module"
+  src="https://cdn.jsdelivr.net/npm/@govbr-ds/webcomponents@2.1.2/dist/webcomponents/webcomponents.esm.js"
+></script>
+
+
+<script>
+
+  /* =========================================================
+     ESTADO DA CAMADA DE COMPATIBILIDADE
+     ========================================================= */
+
+  let observadorGovBrDS =
+    null;
+
+
+  let contadorVisualGovBR =
+    0;
+
+
+  const visualPorProxyGovBR =
+    new WeakMap();
+
+
+  /* =========================================================
+     HELPERS
+     ========================================================= */
+
+  function selecionarIncluindoRaizGovBR_(
+    raiz,
+    seletor
+  ) {
+
+    const encontrados =
+      [];
+
+
+    if (
+      raiz instanceof Element &&
+      raiz.matches(
+        seletor
+      )
+    ) {
+      encontrados.push(
+        raiz
+      );
+    }
+
+
+    if (
+      raiz &&
+      raiz.querySelectorAll
+    ) {
+
+      raiz
+        .querySelectorAll(
+          seletor
+        )
+        .forEach(
+          item =>
+            encontrados.push(
+              item
+            )
+        );
+
+    }
+
+
+    return encontrados;
+
+  }
+
+
+  function deveIgnorarGovBR_(
+    elemento
+  ) {
+
+    if (
+      !elemento ||
+      !(elemento instanceof Element)
+    ) {
+      return true;
+    }
+
+
+    if (
+      elemento.dataset
+        .govbrProxy ===
+      'true'
+    ) {
+      return true;
+    }
+
+
+    if (
+      elemento.closest(
+        '[data-govbr-ignore], .gm-style'
+      )
+    ) {
+      return true;
+    }
+
+
+    /*
+     * Não tocamos nos elementos criados
+     * internamente pelo Google Maps.
+     */
+    if (
+      elemento.closest(
+        '.mapa-propriedade'
+      ) &&
+      !elemento.classList.contains(
+        'mapa-propriedade'
+      )
+    ) {
+      return true;
+    }
+
+
+    return false;
+
+  }
+
+
+  function copiarAtributosGovBR_(
+    origem,
+    destino,
+    ignorar = []
+  ) {
+
+    const ignorados =
+      new Set(
+        ignorar
+      );
+
+
+    Array.from(
+      origem.attributes ||
+      []
+    ).forEach(
+      atributo => {
+
+        if (
+          ignorados.has(
+            atributo.name
+          )
+        ) {
+          return;
+        }
+
+
+        destino.setAttribute(
+          atributo.name,
+          atributo.value
+        );
+
+      }
+    );
+
+  }
+
+
+  function moverConteudoGovBR_(
+    origem,
+    destino
+  ) {
+
+    while (
+      origem.firstChild
+    ) {
+
+      destino.appendChild(
+        origem.firstChild
+      );
+
+    }
+
+  }
+
+
+  function gerarIdVisualGovBR_(
+    proxy
+  ) {
+
+    contadorVisualGovBR++;
+
+
+    return proxy.id
+      ? `${proxy.id}__govbr`
+      : `govbr_visual_${contadorVisualGovBR}`;
+
+  }
+
+
+  function localizarRotuloGovBR_(
+    controle
+  ) {
+
+    if (
+      controle.id
+    ) {
+
+      const labels =
+        document.querySelectorAll(
+          'label[for]'
+        );
+
+
+      for (
+        const label of labels
+      ) {
+
+        if (
+          label.htmlFor ===
+          controle.id
+        ) {
+          return label;
+        }
+
+      }
+
+    }
+
+
+    const anterior =
+      controle
+        .previousElementSibling;
+
+
+    if (
+      anterior &&
+      anterior.tagName ===
+      'LABEL'
+    ) {
+      return anterior;
+    }
+
+
+    return null;
+
+  }
+
+
+  function textoRotuloGovBR_(
+    label
+  ) {
+
+    if (!label) {
+      return '';
+    }
+
+
+    const clone =
+      label.cloneNode(
+        true
+      );
+
+
+    clone
+      .querySelectorAll(
+        '.obrigatorio'
+      )
+      .forEach(
+        item =>
+          item.remove()
+      );
+
+
+    return clone
+      .textContent
+      .replace(
+        /\s+/g,
+        ' '
+      )
+      .trim();
+
+  }
+
+
+  function localizarDescritorGovBR_(
+    elemento,
+    propriedade
+  ) {
+
+    let prototipo =
+      Object.getPrototypeOf(
+        elemento
+      );
+
+
+    while (
+      prototipo
+    ) {
+
+      const descritor =
+        Object.getOwnPropertyDescriptor(
+          prototipo,
+          propriedade
+        );
+
+
+      if (descritor) {
+        return descritor;
+      }
+
+
+      prototipo =
+        Object.getPrototypeOf(
+          prototipo
+        );
+
+    }
+
+
+    return null;
+
+  }
+
+
+  function interceptarPropriedadeGovBR_(
+    elemento,
+    propriedade,
+    callback
+  ) {
+
+    const descritor =
+      localizarDescritorGovBR_(
+        elemento,
+        propriedade
+      );
+
+
+    if (
+      !descritor ||
+      !descritor.get ||
+      !descritor.set
+    ) {
+      return;
+    }
+
+
+    try {
+
+      Object.defineProperty(
+        elemento,
+        propriedade,
+        {
+          configurable:
+            true,
+
+          enumerable:
+            descritor.enumerable,
+
+          get() {
+
+            return descritor
+              .get
+              .call(
+                this
+              );
+
+          },
+
+          set(valor) {
+
+            descritor
+              .set
+              .call(
+                this,
+                valor
+              );
+
+
+            callback?.(
+              this,
+              valor
+            );
+
+          }
+        }
+      );
+
+    } catch (
+      erro
+    ) {
+
+      console.warn(
+        `Não foi possível observar ${propriedade}.`,
+        erro
+      );
+
+    }
+
+  }
+
+
+  function aguardarComponenteGovBR_(
+    nome,
+    timeout = 6000
+  ) {
+
+    if (
+      customElements.get(
+        nome
+      )
+    ) {
+      return Promise.resolve(
+        true
+      );
+    }
+
+
+    return Promise.race([
+
+      customElements
+        .whenDefined(
+          nome
+        )
+        .then(
+          () => true
+        ),
+
+      new Promise(
+        resolve => {
+
+          setTimeout(
+            () =>
+              resolve(
+                false
+              ),
+            timeout
+          );
+
+        }
+      )
+
+    ]);
+
+  }
+
+
+  /* =========================================================
+     BOTÕES
+     ========================================================= */
+
+  function converterBotaoGovBR_(
+    botao
+  ) {
+
+    if (
+      deveIgnorarGovBR_(
+        botao
+      ) ||
+      botao.tagName !==
+      'BUTTON'
+    ) {
+      return;
+    }
+
+
+    /*
+     * As etapas continuam sendo cards operacionais.
+     * O resumo delas já usa br-step.
+     */
+    if (
+      botao.classList.contains(
+        'etapa'
+      )
+    ) {
+      return;
+    }
+
+
+    const migravel =
+      botao.matches(
+        [
+          'button.primary',
+          'button.secondary',
+          'button.action-link',
+          'button.nav-button',
+          'button.table-sort-button'
+        ].join(',')
+      );
+
+
+    if (!migravel) {
+      return;
+    }
+
+
+    const novo =
+      document.createElement(
+        'br-button'
+      );
+
+
+    copiarAtributosGovBR_(
+      botao,
+      novo
+    );
+
+
+    novo.dataset.govbrMigrado =
+      'button';
+
+
+    if (
+      botao.classList.contains(
+        'primary'
+      )
+    ) {
+
+      novo.setAttribute(
+        'emphasis',
+        'primary'
+      );
+
+    } else if (
+      botao.classList.contains(
+        'secondary'
+      )
+    ) {
+
+      novo.setAttribute(
+        'emphasis',
+        'secondary'
+      );
+
+    } else {
+
+      novo.setAttribute(
+        'emphasis',
+        'tertiary'
+      );
+
+
+      novo.setAttribute(
+        'density',
+        'small'
+      );
+
+    }
+
+
+    novo.setAttribute(
+      'type',
+      botao.getAttribute(
+        'type'
+      ) ||
+      'button'
+    );
+
+
+    novo.disabled =
+      Boolean(
+        botao.disabled
+      );
+
+
+    moverConteudoGovBR_(
+      botao,
+      novo
+    );
+
+
+    botao.replaceWith(
+      novo
+    );
+
+  }
+
+
+  /* =========================================================
+     CARDS
+     ========================================================= */
+
+  function converterCardGovBR_(
+    card
+  ) {
+
+    if (
+      deveIgnorarGovBR_(
+        card
+      ) ||
+      card.tagName ===
+      'BR-CARD'
+    ) {
+      return;
+    }
+
+
+    const novo =
+      document.createElement(
+        'br-card'
+      );
+
+
+    copiarAtributosGovBR_(
+      card,
+      novo
+    );
+
+
+    novo.dataset.govbrMigrado =
+      'card';
+
+
+    moverConteudoGovBR_(
+      card,
+      novo
+    );
+
+
+    card.replaceWith(
+      novo
+    );
+
+  }
+
+
+  /* =========================================================
+     TAGS / STATUS
+     ========================================================= */
+
+  function converterTagGovBR_(
+    tag
+  ) {
+
+    if (
+      deveIgnorarGovBR_(
+        tag
+      ) ||
+      tag.tagName ===
+      'BR-TAG'
+    ) {
+      return;
+    }
+
+
+    const novo =
+      document.createElement(
+        'br-tag'
+      );
+
+
+    copiarAtributosGovBR_(
+      tag,
+      novo
+    );
+
+
+    novo.setAttribute(
+      'variant',
+      'status'
+    );
+
+
+    novo.setAttribute(
+      'shape',
+      'rounded'
+    );
+
+
+    novo.setAttribute(
+      'density',
+      'small'
+    );
+
+
+    novo.dataset.govbrMigrado =
+      'tag';
+
+
+    moverConteudoGovBR_(
+      tag,
+      novo
+    );
+
+
+    tag.replaceWith(
+      novo
+    );
+
+  }
+
+
+  /* =========================================================
+     MENSAGENS
+     ========================================================= */
+
+  function estadoMensagemGovBR_(
+    elemento
+  ) {
+
+    if (
+      elemento.classList.contains(
+        'erro'
+      ) ||
+      elemento.classList.contains(
+        'insuficiente'
+      )
+    ) {
+      return 'danger';
+    }
+
+
+    if (
+      elemento.classList.contains(
+        'sucesso'
+      ) ||
+      elemento.classList.contains(
+        'completa'
+      ) ||
+      elemento.classList.contains(
+        'equilibrado'
+      ) ||
+      elemento.classList.contains(
+        'suficiente'
+      )
+    ) {
+      return 'success';
+    }
+
+
+    if (
+      elemento.classList.contains(
+        'divergente'
+      ) ||
+      elemento.classList.contains(
+        'mapa-aviso'
+      ) ||
+      elemento.classList.contains(
+        'pendencias-card'
+      )
+    ) {
+      return 'warning';
+    }
+
+
+    return 'info';
+
+  }
+
+
+  function sincronizarMensagemGovBR_(
+    elemento
+  ) {
+
+    if (
+      !elemento ||
+      elemento.tagName !==
+      'BR-MESSAGE'
+    ) {
+      return;
+    }
+
+
+    elemento.setAttribute(
+      'state',
+      estadoMensagemGovBR_(
+        elemento
+      )
+    );
+
+
+    elemento.setAttribute(
+      'show-icon',
+      ''
+    );
+
+
+    if (
+      elemento.classList.contains(
+        'message'
+      )
+    ) {
+      elemento.setAttribute(
+        'feedback',
+        ''
+      );
+    }
+
+
+    if (
+      elemento.classList.contains(
+        'loading'
+      )
+    ) {
+
+      elemento.setAttribute(
+        'aria-busy',
+        'true'
+      );
+
+    } else {
+
+      elemento.removeAttribute(
+        'aria-busy'
+      );
+
+    }
+
+  }
+
+
+  function converterMensagemGovBR_(
+    elemento
+  ) {
+
+    if (
+      deveIgnorarGovBR_(
+        elemento
+      ) ||
+      elemento.tagName ===
+      'BR-MESSAGE'
+    ) {
+      return;
+    }
+
+
+    const novo =
+      document.createElement(
+        'br-message'
+      );
+
+
+    copiarAtributosGovBR_(
+      elemento,
+      novo
+    );
+
+
+    novo.dataset.govbrMigrado =
+      'message';
+
+
+    /*
+     * Evita componente visual vazio por causa
+     * de whitespace de indentação.
+     */
+    if (
+      elemento.textContent
+        .trim() === ''
+    ) {
+
+      elemento.innerHTML =
+        '';
+
+    }
+
+
+    moverConteudoGovBR_(
+      elemento,
+      novo
+    );
+
+
+    elemento.replaceWith(
+      novo
+    );
+
+
+    sincronizarMensagemGovBR_(
+      novo
+    );
+
+  }
+
+
+  /* =========================================================
+     PROXY DE FORMULÁRIO
+     ========================================================= */
+
+  function prepararProxyGovBR_(
+    proxy,
+    visual,
+    requiredOriginal
+  ) {
+
+    proxy.dataset.govbrProxy =
+      'true';
+
+
+    proxy.classList.add(
+      'govbr-native-proxy'
+    );
+
+
+    proxy.setAttribute(
+      'aria-hidden',
+      'true'
+    );
+
+
+    proxy.tabIndex =
+      -1;
+
+
+    /*
+     * A validação visual passa para o Web Component.
+     * Evita erro "invalid form control is not focusable"
+     * no controle proxy invisível.
+     */
+    if (
+      'required' in proxy
+    ) {
+      proxy.required =
+        false;
+    }
+
+
+    visual.dataset.govbrVisual =
+      'true';
+
+
+    visual.id =
+      gerarIdVisualGovBR_(
+        proxy
+      );
+
+
+    if (
+      'required' in visual
+    ) {
+      visual.required =
+        Boolean(
+          requiredOriginal
+        );
+    }
+
+
+    visualPorProxyGovBR.set(
+      proxy,
+      visual
+    );
+
+
+    /*
+     * Código antigo que chama campo.focus()
+     * passa a focar o componente visual.
+     */
+    try {
+
+      proxy.focus =
+        function () {
+
+          if (
+            typeof visual.setFocus ===
+            'function'
+          ) {
+
+            visual.setFocus();
+
+          } else if (
+            typeof visual.focusInput ===
+            'function'
+          ) {
+
+            visual.focusInput();
+
+          } else {
+
+            visual.focus();
+
+          }
+
+        };
+
+    } catch (
+      erro
+    ) {}
+
+
+    /*
+     * Reset nativo do formulário continua
+     * sincronizando os componentes visuais.
+     */
+    const form =
+      proxy.form;
+
+
+    if (form) {
+
+      form.addEventListener(
+        'reset',
+        () => {
+
+          queueMicrotask(
+            () =>
+              sincronizarVisualGovBR_(
+                proxy
+              )
+          );
+
+        }
+      );
+
+    }
+
+  }
+
+
+  function copiarAtributosVisuaisCampoGovBR_(
+    origem,
+    destino
+  ) {
+
+    const permitidos = [
+      'class',
+      'style',
+      'placeholder',
+      'maxlength',
+      'minlength',
+      'min',
+      'max',
+      'step',
+      'pattern',
+      'autocomplete',
+      'inputmode',
+      'title',
+      'aria-label',
+      'aria-describedby'
+    ];
+
+
+    permitidos.forEach(
+      nome => {
+
+        if (
+          origem.hasAttribute(
+            nome
+          )
+        ) {
+
+          destino.setAttribute(
+            nome,
+            origem.getAttribute(
+              nome
+            )
+          );
+
+        }
+
+      }
+    );
+
+  }
+
+
+  function dispararEventoProxyGovBR_(
+    proxy,
+    tipo
+  ) {
+
+    let evento;
+
+
+    if (
+      tipo ===
+      'blur' ||
+      tipo ===
+      'focusout'
+    ) {
+
+      evento =
+        new FocusEvent(
+          tipo,
+          {
+            bubbles:
+              tipo ===
+              'focusout',
+
+            composed:
+              true
+          }
+        );
+
+    } else {
+
+      evento =
+        new Event(
+          tipo,
+          {
+            bubbles:
+              true,
+
+            composed:
+              true
+          }
+        );
+
+    }
+
+
+    proxy.dispatchEvent(
+      evento
+    );
+
+  }
+
+
+  function valorVisualGovBR_(
+    proxy,
+    visual
+  ) {
+
+    if (
+      proxy instanceof HTMLInputElement &&
+      proxy.type ===
+      'checkbox'
+    ) {
+      return Boolean(
+        visual.checked
+      );
+    }
+
+
+    if (
+      proxy instanceof HTMLInputElement &&
+      proxy.type ===
+      'date'
+    ) {
+
+      return String(
+        visual.serializedValue ||
+        ''
+      );
+
+    }
+
+
+    if (
+      proxy instanceof HTMLSelectElement &&
+      proxy.multiple
+    ) {
+
+      return Array.isArray(
+        visual.value
+      )
+        ? visual.value
+        : [];
+
+    }
+
+
+    return visual.value ??
+      '';
+
+  }
+
+
+  function aplicarValorVisualNoProxyGovBR_(
+    proxy,
+    visual
+  ) {
+
+    if (
+      proxy instanceof HTMLInputElement &&
+      proxy.type ===
+      'checkbox'
+    ) {
+
+      proxy.checked =
+        Boolean(
+          visual.checked
+        );
+
+
+      return;
+
+    }
+
+
+    if (
+      proxy instanceof HTMLInputElement &&
+      proxy.type ===
+      'date'
+    ) {
+
+      proxy.value =
+        String(
+          visual.serializedValue ||
+          ''
+        );
+
+
+      return;
+
+    }
+
+
+    if (
+      proxy instanceof HTMLSelectElement &&
+      proxy.multiple
+    ) {
+
+      const valores =
+        Array.isArray(
+          visual.value
+        )
+          ? visual.value
+          : [];
+
+
+      Array.from(
+        proxy.options
+      ).forEach(
+        option => {
+
+          option.selected =
+            valores.includes(
+              option.value
+            );
+
+        }
+      );
+
+
+      return;
+
+    }
+
+
+    proxy.value =
+      String(
+        valorVisualGovBR_(
+          proxy,
+          visual
+        ) ??
+        ''
+      );
+
+  }
+
+
+  function conectarEventosVisualGovBR_(
+    proxy,
+    visual
+  ) {
+
+    [
+      'input',
+      'change'
+    ].forEach(
+      tipo => {
+
+        visual.addEventListener(
+          tipo,
+          event => {
+
+            /*
+             * Toda a aplicação continua recebendo
+             * eventos pelo controle nativo original.
+             */
+            event.stopPropagation();
+
+
+            aplicarValorVisualNoProxyGovBR_(
+              proxy,
+              visual
+            );
+
+
+            dispararEventoProxyGovBR_(
+              proxy,
+              tipo
+            );
+
+          }
+        );
+
+      }
+    );
+
+
+    visual.addEventListener(
+      'blur',
+      event => {
+
+        event.stopPropagation();
+
+
+        aplicarValorVisualNoProxyGovBR_(
+          proxy,
+          visual
+        );
+
+
+        dispararEventoProxyGovBR_(
+          proxy,
+          'blur'
+        );
+
+      }
+    );
+
+
+    visual.addEventListener(
+      'focusout',
+      event => {
+
+        event.stopPropagation();
+
+
+        aplicarValorVisualNoProxyGovBR_(
+          proxy,
+          visual
+        );
+
+
+        dispararEventoProxyGovBR_(
+          proxy,
+          'focusout'
+        );
+
+      }
+    );
+
+  }
+
+
+  /* =========================================================
+     INPUT
+     ========================================================= */
+
+  function converterInputGovBR_(
+    input
+  ) {
+
+    if (
+      deveIgnorarGovBR_(
+        input
+      ) ||
+      input.dataset.govbrProxy ===
+      'true'
+    ) {
+      return;
+    }
+
+
+    const tipo =
+      String(
+        input.type ||
+        'text'
+      ).toLowerCase();
+
+
+    if (
+      tipo ===
+      'hidden'
+    ) {
+      return;
+    }
+
+
+    if (
+      tipo ===
+      'checkbox'
+    ) {
+
+      converterCheckboxGovBR_(
+        input
+      );
+
+
+      return;
+    }
+
+
+    if (
+      tipo ===
+      'date'
+    ) {
+
+      converterDataGovBR_(
+        input
+      );
+
+
+      return;
+    }
+
+
+    const tiposPermitidos = [
+      'color',
+      'email',
+      'number',
+      'password',
+      'range',
+      'search',
+      'tel',
+      'text',
+      'url'
+    ];
+
+
+    const tipoGovBR =
+      tiposPermitidos.includes(
+        tipo
+      )
+        ? tipo
+        : 'text';
+
+
+    const visual =
+      document.createElement(
+        'br-input'
+      );
+
+
+    const classesOriginais =
+      input.className;
+
+
+    copiarAtributosVisuaisCampoGovBR_(
+      input,
+      visual
+    );
+
+
+    visual.className =
+      classesOriginais;
+
+
+    visual.setAttribute(
+      'type',
+      tipoGovBR
+    );
+
+
+    visual.setAttribute(
+      'density',
+      'medium'
+    );
+
+
+    visual.value =
+      input.value ??
+      '';
+
+
+    visual.disabled =
+      Boolean(
+        input.disabled
+      );
+
+
+    visual.readonly =
+      Boolean(
+        input.readOnly
+      );
+
+
+    visual.name =
+      input.name ||
+      input.id ||
+      gerarIdVisualGovBR_(
+        input
+      );
+
+
+    const requiredOriginal =
+      Boolean(
+        input.required
+      );
+
+
+    const label =
+      localizarRotuloGovBR_(
+        input
+      );
+
+
+    const textoLabel =
+      textoRotuloGovBR_(
+        label
+      );
+
+
+    if (
+      textoLabel
+    ) {
+      visual.setAttribute(
+        'label',
+        textoLabel
+      );
+    }
+
+
+    input.after(
+      visual
+    );
+
+
+    if (label) {
+      label.remove();
+    }
+
+
+    prepararProxyGovBR_(
+      input,
+      visual,
+      requiredOriginal
+    );
+
+
+    interceptarPropriedadeGovBR_(
+      input,
+      'value',
+      () =>
+        sincronizarVisualGovBR_(
+          input
+        )
+    );
+
+
+    interceptarPropriedadeGovBR_(
+      input,
+      'disabled',
+      () =>
+        sincronizarVisualGovBR_(
+          input
+        )
+    );
+
+
+    interceptarPropriedadeGovBR_(
+      input,
+      'readOnly',
+      () =>
+        sincronizarVisualGovBR_(
+          input
+        )
+    );
+
+
+    conectarEventosVisualGovBR_(
+      input,
+      visual
+    );
+
+  }
+
+
+  /* =========================================================
+     TEXTAREA
+     ========================================================= */
+
+  function converterTextareaGovBR_(
+    textarea
+  ) {
+
+    if (
+      deveIgnorarGovBR_(
+        textarea
+      ) ||
+      textarea.dataset.govbrProxy ===
+      'true'
+    ) {
+      return;
+    }
+
+
+    const visual =
+      document.createElement(
+        'br-textarea'
+      );
+
+
+    const classesOriginais =
+      textarea.className;
+
+
+    copiarAtributosVisuaisCampoGovBR_(
+      textarea,
+      visual
+    );
+
+
+    visual.className =
+      classesOriginais;
+
+
+    visual.setAttribute(
+      'density',
+      'medium'
+    );
+
+
+    if (
+      textarea.hasAttribute(
+        'rows'
+      )
+    ) {
+      visual.setAttribute(
+        'rows',
+        textarea.getAttribute(
+          'rows'
+        )
+      );
+    }
+
+
+    visual.value =
+      textarea.value ??
+      '';
+
+
+    visual.disabled =
+      Boolean(
+        textarea.disabled
+      );
+
+
+    visual.readonly =
+      Boolean(
+        textarea.readOnly
+      );
+
+
+    visual.name =
+      textarea.name ||
+      textarea.id ||
+      gerarIdVisualGovBR_(
+        textarea
+      );
+
+
+    const requiredOriginal =
+      Boolean(
+        textarea.required
+      );
+
+
+    const label =
+      localizarRotuloGovBR_(
+        textarea
+      );
+
+
+    const textoLabel =
+      textoRotuloGovBR_(
+        label
+      );
+
+
+    if (
+      textoLabel
+    ) {
+      visual.setAttribute(
+        'label',
+        textoLabel
+      );
+    }
+
+
+    textarea.after(
+      visual
+    );
+
+
+    if (label) {
+      label.remove();
+    }
+
+
+    prepararProxyGovBR_(
+      textarea,
+      visual,
+      requiredOriginal
+    );
+
+
+    interceptarPropriedadeGovBR_(
+      textarea,
+      'value',
+      () =>
+        sincronizarVisualGovBR_(
+          textarea
+        )
+    );
+
+
+    interceptarPropriedadeGovBR_(
+      textarea,
+      'disabled',
+      () =>
+        sincronizarVisualGovBR_(
+          textarea
+        )
+    );
+
+
+    conectarEventosVisualGovBR_(
+      textarea,
+      visual
+    );
+
+  }
+
+
+  /* =========================================================
+     SELECT
+     ========================================================= */
+
+  function valorAtualSelectGovBR_(
+    select
+  ) {
+
+    if (
+      select.multiple
+    ) {
+
+      return Array.from(
+        select.selectedOptions
+      ).map(
+        option =>
+          option.value
+      );
+
+    }
+
+
+    return select.value;
+
+  }
+
+
+  function sincronizarOpcoesSelectGovBR_(
+    select
+  ) {
+
+    const visual =
+      visualPorProxyGovBR.get(
+        select
+      );
+
+
+    if (
+      !visual
+    ) {
+      return;
+    }
+
+
+    const options =
+      Array.from(
+        select.options
+      );
+
+
+    const placeholder =
+      options.find(
+        option =>
+          option.value ===
+          ''
+      );
+
+
+    if (
+      placeholder
+    ) {
+
+      visual.placeholder =
+        placeholder.textContent
+          .trim();
+
+    }
+
+
+    const opcoesGovBR =
+      options
+        .filter(
+          option =>
+            option.value !==
+            ''
+        )
+        .map(
+          option => ({
+            label:
+              option.textContent
+                .trim(),
+
+            value:
+              option.value,
+
+            selected:
+              option.selected,
+
+            disabled:
+              option.disabled
+          })
+        );
+
+
+    visual.options =
+      opcoesGovBR;
+
+
+    visual.multiple =
+      Boolean(
+        select.multiple
+      );
+
+
+    visual.disabled =
+      Boolean(
+        select.disabled
+      );
+
+
+    visual.value =
+      valorAtualSelectGovBR_(
+        select
+      );
+
+  }
+
+
+  function converterSelectGovBR_(
+    select
+  ) {
+
+    if (
+      deveIgnorarGovBR_(
+        select
+      ) ||
+      select.dataset.govbrProxy ===
+      'true'
+    ) {
+      return;
+    }
+
+
+    const visual =
+      document.createElement(
+        'br-select'
+      );
+
+
+    const classesOriginais =
+      select.className;
+
+
+    copiarAtributosVisuaisCampoGovBR_(
+      select,
+      visual
+    );
+
+
+    visual.className =
+      classesOriginais;
+
+
+    visual.setAttribute(
+      'density',
+      'medium'
+    );
+
+
+    visual.disabled =
+      Boolean(
+        select.disabled
+      );
+
+
+    visual.multiple =
+      Boolean(
+        select.multiple
+      );
+
+
+    visual.name =
+      select.name ||
+      select.id ||
+      gerarIdVisualGovBR_(
+        select
+      );
+
+
+    const requiredOriginal =
+      Boolean(
+        select.required
+      );
+
+
+    const label =
+      localizarRotuloGovBR_(
+        select
+      );
+
+
+    const textoLabel =
+      textoRotuloGovBR_(
+        label
+      );
+
+
+    if (
+      textoLabel
+    ) {
+      visual.setAttribute(
+        'label',
+        textoLabel
+      );
+    }
+
+
+    select.after(
+      visual
+    );
+
+
+    if (label) {
+      label.remove();
+    }
+
+
+    prepararProxyGovBR_(
+      select,
+      visual,
+      requiredOriginal
+    );
+
+
+    sincronizarOpcoesSelectGovBR_(
+      select
+    );
+
+
+    interceptarPropriedadeGovBR_(
+      select,
+      'value',
+      () =>
+        sincronizarVisualGovBR_(
+          select
+        )
+    );
+
+
+    interceptarPropriedadeGovBR_(
+      select,
+      'selectedIndex',
+      () =>
+        sincronizarVisualGovBR_(
+          select
+        )
+    );
+
+
+    interceptarPropriedadeGovBR_(
+      select,
+      'disabled',
+      () =>
+        sincronizarVisualGovBR_(
+          select
+        )
+    );
+
+
+    conectarEventosVisualGovBR_(
+      select,
+      visual
+    );
+
+
+    /*
+     * O código atual continua podendo fazer:
+     *
+     * select.innerHTML = ...
+     * select.appendChild(option)
+     *
+     * O espelho GovBR é atualizado automaticamente.
+     */
+    const observer =
+      new MutationObserver(
+        () => {
+
+          sincronizarOpcoesSelectGovBR_(
+            select
+          );
+
+        }
+      );
+
+
+    observer.observe(
+      select,
+      {
+        childList:
+          true,
+
+        subtree:
+          true,
+
+        attributes:
+          true,
+
+        attributeFilter: [
+          'selected',
+          'disabled',
+          'label',
+          'value'
+        ]
+      }
+    );
+
+
+    select.__govbrOptionsObserver =
+      observer;
+
+  }
+
+
+  /* =========================================================
+     CHECKBOX
+     ========================================================= */
+
+  function converterCheckboxGovBR_(
+    checkbox
+  ) {
+
+    if (
+      deveIgnorarGovBR_(
+        checkbox
+      ) ||
+      checkbox.dataset.govbrProxy ===
+      'true'
+    ) {
+      return;
+    }
+
+
+    const visual =
+      document.createElement(
+        'br-checkbox'
+      );
+
+
+    const requiredOriginal =
+      Boolean(
+        checkbox.required
+      );
+
+
+    const wrapper =
+      checkbox.closest(
+        'label.confirmation-box'
+      );
+
+
+    let label =
+      null;
+
+    let textoLabel =
+      '';
+
+
+    if (
+      wrapper &&
+      wrapper.contains(
+        checkbox
+      )
+    ) {
+
+      textoLabel =
+        wrapper
+          .querySelector(
+            'span'
+          )
+          ?.textContent
+          ?.replace(
+            /\s+/g,
+            ' '
+          )
+          .trim() ||
+        'Confirmar';
+
+
+      visual.classList.add(
+        'confirmation-box'
+      );
+
+
+      /*
+       * O proxy precisa permanecer dentro
+       * do formulário, mas fora do label.
+       */
+      wrapper.parentNode.insertBefore(
+        checkbox,
+        wrapper
+      );
+
+    } else {
+
+      label =
+        localizarRotuloGovBR_(
+          checkbox
+        );
+
+
+      textoLabel =
+        textoRotuloGovBR_(
+          label
+        );
+
+    }
+
+
+    visual.label =
+      textoLabel ||
+      'Selecionar';
+
+
+    visual.checked =
+      Boolean(
+        checkbox.checked
+      );
+
+
+    visual.disabled =
+      Boolean(
+        checkbox.disabled
+      );
+
+
+    visual.name =
+      checkbox.name ||
+      checkbox.id ||
+      gerarIdVisualGovBR_(
+        checkbox
+      );
+
+
+    if (
+      wrapper
+    ) {
+
+      wrapper.replaceWith(
+        visual
+      );
+
+    } else {
+
+      checkbox.after(
+        visual
+      );
+
+
+      if (label) {
+        label.remove();
+      }
+
+    }
+
+
+    prepararProxyGovBR_(
+      checkbox,
+      visual,
+      requiredOriginal
+    );
+
+
+    interceptarPropriedadeGovBR_(
+      checkbox,
+      'checked',
+      () =>
+        sincronizarVisualGovBR_(
+          checkbox
+        )
+    );
+
+
+    interceptarPropriedadeGovBR_(
+      checkbox,
+      'disabled',
+      () =>
+        sincronizarVisualGovBR_(
+          checkbox
+        )
+    );
+
+
+    conectarEventosVisualGovBR_(
+      checkbox,
+      visual
+    );
+
+  }
+
+
+  /* =========================================================
+     DATA
+     ========================================================= */
+
+  function converterDataGovBR_(
+    input
+  ) {
+
+    if (
+      deveIgnorarGovBR_(
+        input
+      ) ||
+      input.dataset.govbrProxy ===
+      'true'
+    ) {
+      return;
+    }
+
+
+    const visual =
+      document.createElement(
+        'br-datetime-picker'
+      );
+
+
+    const requiredOriginal =
+      Boolean(
+        input.required
+      );
+
+
+    const label =
+      localizarRotuloGovBR_(
+        input
+      );
+
+
+    const textoLabel =
+      textoRotuloGovBR_(
+        label
+      );
+
+
+    visual.setAttribute(
+      'mode',
+      'date'
+    );
+
+
+    visual.setAttribute(
+      'selection-mode',
+      'single'
+    );
+
+
+    visual.setAttribute(
+      'locale',
+      'pt-BR'
+    );
+
+
+    visual.setAttribute(
+      'placeholder',
+      'dd/mm/aaaa'
+    );
+
+
+    if (
+      textoLabel
+    ) {
+      visual.setAttribute(
+        'aria-label',
+        textoLabel
+      );
+    }
+
+
+    if (
+      input.value
+    ) {
+
+      visual.serializedValue =
+        input.value;
+
+    }
+
+
+    if (
+      input.hasAttribute(
+        'min'
+      )
+    ) {
+      visual.setAttribute(
+        'min',
+        input.getAttribute(
+          'min'
+        )
+      );
+    }
+
+
+    if (
+      input.hasAttribute(
+        'max'
+      )
+    ) {
+      visual.setAttribute(
+        'max',
+        input.getAttribute(
+          'max'
+        )
+      );
+    }
+
+
+    visual.disabled =
+      Boolean(
+        input.disabled
+      );
+
+
+    visual.name =
+      input.name ||
+      input.id ||
+      gerarIdVisualGovBR_(
+        input
+      );
+
+
+    input.after(
+      visual
+    );
+
+
+    /*
+     * O datetime-picker não utiliza a mesma
+     * propriedade visual de label dos inputs.
+     * Mantemos o label externo.
+     */
+    if (label) {
+
+      label.removeAttribute(
+        'for'
+      );
+
+
+      label.classList.add(
+        'govbr-date-label'
+      );
+
+    }
+
+
+    prepararProxyGovBR_(
+      input,
+      visual,
+      requiredOriginal
+    );
+
+
+    interceptarPropriedadeGovBR_(
+      input,
+      'value',
+      () =>
+        sincronizarVisualGovBR_(
+          input
+        )
+    );
+
+
+    interceptarPropriedadeGovBR_(
+      input,
+      'disabled',
+      () =>
+        sincronizarVisualGovBR_(
+          input
+        )
+    );
+
+
+    conectarEventosVisualGovBR_(
+      input,
+      visual
+    );
+
+  }
+
+
+  /* =========================================================
+     SINCRONIZAÇÃO PROXY → VISUAL
+     ========================================================= */
+
+  function sincronizarVisualGovBR_(
+    proxy
+  ) {
+
+    const visual =
+      visualPorProxyGovBR.get(
+        proxy
+      );
+
+
+    if (!visual) {
+      return;
+    }
+
+
+    if (
+      proxy instanceof HTMLInputElement &&
+      proxy.type ===
+      'checkbox'
+    ) {
+
+      visual.checked =
+        Boolean(
+          proxy.checked
+        );
+
+
+      visual.disabled =
+        Boolean(
+          proxy.disabled
+        );
+
+
+      return;
+
+    }
+
+
+    if (
+      proxy instanceof HTMLInputElement &&
+      proxy.type ===
+      'date'
+    ) {
+
+      const valor =
+        proxy.value ||
+        '';
+
+
+      visual.serializedValue =
+        valor;
+
+
+      if (
+        typeof visual.setValue ===
+        'function'
+      ) {
+
+        Promise.resolve(
+          visual.setValue(
+            valor ||
+            null
+          )
+        ).catch(
+          () => {}
+        );
+
+      }
+
+
+      visual.disabled =
+        Boolean(
+          proxy.disabled
+        );
+
+
+      return;
+
+    }
+
+
+    if (
+      proxy instanceof HTMLSelectElement
+    ) {
+
+      visual.value =
+        valorAtualSelectGovBR_(
+          proxy
+        );
+
+
+      visual.disabled =
+        Boolean(
+          proxy.disabled
+        );
+
+
+      return;
+
+    }
+
+
+    visual.value =
+      proxy.value ??
+      '';
+
+
+    visual.disabled =
+      Boolean(
+        proxy.disabled
+      );
+
+
+    if (
+      'readonly' in visual &&
+      'readOnly' in proxy
+    ) {
+      visual.readonly =
+        Boolean(
+          proxy.readOnly
+        );
+    }
+
+  }
+
+
+  /* =========================================================
+     TABELA
+     ========================================================= */
+
+  function copiarAtributosCelulaGovBR_(
+    origem,
+    destino
+  ) {
+
+    copiarAtributosGovBR_(
+      origem,
+      destino,
+      [
+        'colspan',
+        'rowspan'
+      ]
+    );
+
+
+    if (
+      origem.classList.contains(
+        'numero'
+      )
+    ) {
+      destino.setAttribute(
+        'horizontal-alignment',
+        'end'
+      );
+    }
+
+  }
+
+
+  function aplicarColspanGovBR_(
+    origem,
+    destino,
+    totalColunas
+  ) {
+
+    const colspan =
+      Number(
+        origem.getAttribute(
+          'colspan'
+        ) ||
+        1
+      );
+
+
+    if (
+      colspan <= 1
+    ) {
+      return;
+    }
+
+
+    if (
+      colspan >=
+      totalColunas
+    ) {
+
+      destino.style.gridColumn =
+        '1 / -1';
+
+    } else {
+
+      destino.style.gridColumn =
+        `span ${colspan}`;
+
+    }
+
+  }
+
+
+  function converterTabelaGovBR_(
+    tabela
+  ) {
+
+    if (
+      deveIgnorarGovBR_(
+        tabela
+      ) ||
+      tabela.tagName ===
+      'BR-TABLE'
+    ) {
+      return;
+    }
+
+
+    const nova =
+      document.createElement(
+        'br-table'
+      );
+
+
+    copiarAtributosGovBR_(
+      tabela,
+      nova
+    );
+
+
+    nova.setAttribute(
+      'density',
+      'small'
+    );
+
+
+    nova.setAttribute(
+      'row-divider',
+      ''
+    );
+
+
+    nova.setAttribute(
+      'overflow',
+      'wrap'
+    );
+
+
+    nova.dataset.govbrMigrado =
+      'table';
+
+
+    const primeiraLinhaCabecalho =
+      tabela.tHead
+        ?.rows?.[0];
+
+
+    const totalColunas =
+      primeiraLinhaCabecalho
+        ? primeiraLinhaCabecalho
+            .cells.length
+        : (
+            tabela.rows?.[0]
+              ?.cells.length ||
+            1
+          );
+
+
+    if (
+      primeiraLinhaCabecalho
+    ) {
+
+      const header =
+        document.createElement(
+          'br-table-header'
+        );
+
+
+      header.setAttribute(
+        'slot',
+        'header'
+      );
+
+
+      Array.from(
+        primeiraLinhaCabecalho.cells
+      ).forEach(
+        th => {
+
+          const cell =
+            document.createElement(
+              'br-table-header-cell'
+            );
+
+
+          copiarAtributosCelulaGovBR_(
+            th,
+            cell
+          );
+
+
+          aplicarColspanGovBR_(
+            th,
+            cell,
+            totalColunas
+          );
+
+
+          moverConteudoGovBR_(
+            th,
+            cell
+          );
+
+
+          header.appendChild(
+            cell
+          );
+
+        }
+      );
+
+
+      nova.appendChild(
+        header
+      );
+
+    }
+
+
+    const body =
+      document.createElement(
+        'br-table-body'
+      );
+
+
+    body.setAttribute(
+      'slot',
+      'body'
+    );
+
+
+    const linhasBody =
+      tabela.tBodies.length
+        ? Array.from(
+            tabela.tBodies
+          ).flatMap(
+            tbody =>
+              Array.from(
+                tbody.rows
+              )
+          )
+        : [];
+
+
+    linhasBody.forEach(
+      tr => {
+
+        const row =
+          document.createElement(
+            'br-table-row'
+          );
+
+
+        copiarAtributosGovBR_(
+          tr,
+          row
+        );
+
+
+        Array.from(
+          tr.cells
+        ).forEach(
+          td => {
+
+            const cell =
+              document.createElement(
+                'br-table-cell'
+              );
+
+
+            copiarAtributosCelulaGovBR_(
+              td,
+              cell
+            );
+
+
+            aplicarColspanGovBR_(
+              td,
+              cell,
+              totalColunas
+            );
+
+
+            moverConteudoGovBR_(
+              td,
+              cell
+            );
+
+
+            row.appendChild(
+              cell
+            );
+
+          }
+        );
+
+
+        body.appendChild(
+          row
+        );
+
+      }
+    );
+
+
+    nova.appendChild(
+      body
+    );
+
+
+    tabela.replaceWith(
+      nova
+    );
+
+  }
+
+
+  /* =========================================================
+     MIGRAÇÃO DE UMA ÁRVORE
+     ========================================================= */
+
+  function migrarInterfaceGovBrDS_(
+    raiz = document
+  ) {
+
+    /*
+     * Cards primeiro: os conteúdos são movidos,
+     * mas continuam disponíveis para as demais
+     * migrações.
+     */
+    if (
+      customElements.get(
+        'br-card'
+      )
+    ) {
+
+      selecionarIncluindoRaizGovBR_(
+        raiz,
+        '.card:not(br-card)'
+      ).forEach(
+        converterCardGovBR_
+      );
+
+    }
+
+
+    if (
+      customElements.get(
+        'br-button'
+      )
+    ) {
+
+      selecionarIncluindoRaizGovBR_(
+        raiz,
+        'button'
+      ).forEach(
+        converterBotaoGovBR_
+      );
+
+    }
+
+
+    /*
+     * Campos.
+     */
+    if (
+      customElements.get(
+        'br-input'
+      )
+    ) {
+
+      selecionarIncluindoRaizGovBR_(
+        raiz,
+        'input:not([data-govbr-proxy="true"])'
+      ).forEach(
+        converterInputGovBR_
+      );
+
+    }
+
+
+    if (
+      customElements.get(
+        'br-textarea'
+      )
+    ) {
+
+      selecionarIncluindoRaizGovBR_(
+        raiz,
+        'textarea:not([data-govbr-proxy="true"])'
+      ).forEach(
+        converterTextareaGovBR_
+      );
+
+    }
+
+
+    if (
+      customElements.get(
+        'br-select'
+      )
+    ) {
+
+      selecionarIncluindoRaizGovBR_(
+        raiz,
+        'select:not([data-govbr-proxy="true"])'
+      ).forEach(
+        converterSelectGovBR_
+      );
+
+    }
+
+
+    /*
+     * Status.
+     */
+    if (
+      customElements.get(
+        'br-tag'
+      )
+    ) {
+
+      selecionarIncluindoRaizGovBR_(
+        raiz,
+        [
+          '.status:not(br-tag)',
+          '.cadastro-ok:not(br-tag)',
+          '.cadastro-pendente:not(br-tag)',
+          '.capacidade-ok:not(br-tag)',
+          '.capacidade-insuficiente:not(br-tag)'
+        ].join(',')
+      ).forEach(
+        converterTagGovBR_
+      );
+
+    }
+
+
+    /*
+     * Mensagens.
+     */
+    if (
+      customElements.get(
+        'br-message'
+      )
+    ) {
+
+      selecionarIncluindoRaizGovBR_(
+        raiz,
+        [
+          '.message:not(br-message)',
+          '.pendencias-card:not(br-message)',
+          '.balanceamento-card:not(br-message)',
+          '.capacidade-aviso:not(br-message)',
+          '.mapa-mensagem:not(br-message)'
+        ].join(',')
+      ).forEach(
+        converterMensagemGovBR_
+      );
+
+    }
+
+
+    /*
+     * Tabelas por último.
+     */
+    if (
+      customElements.get(
+        'br-table'
+      )
+    ) {
+
+      selecionarIncluindoRaizGovBR_(
+        raiz,
+        'table'
+      ).forEach(
+        converterTabelaGovBR_
+      );
+
+    }
+
+  }
+
+
+  /* =========================================================
+     OBSERVADOR DE CONTEÚDO DINÂMICO
+     ========================================================= */
+
+  function iniciarObservadorGovBrDS_() {
+
+    if (
+      observadorGovBrDS
+    ) {
+      return;
+    }
+
+
+    observadorGovBrDS =
+      new MutationObserver(
+        alteracoes => {
+
+          alteracoes.forEach(
+            alteracao => {
+
+              if (
+                alteracao.type ===
+                'attributes'
+              ) {
+
+                const alvo =
+                  alteracao.target;
+
+
+                if (
+                  alvo.tagName ===
+                  'BR-MESSAGE'
+                ) {
+
+                  sincronizarMensagemGovBR_(
+                    alvo
+                  );
+
+                }
+
+
+                return;
+
+              }
+
+
+              alteracao
+                .addedNodes
+                .forEach(
+                  node => {
+
+                    if (
+                      node.nodeType !==
+                      Node.ELEMENT_NODE
+                    ) {
+                      return;
+                    }
+
+
+                    migrarInterfaceGovBrDS_(
+                      node
+                    );
+
+                  }
+                );
+
+            }
+          );
+
+        }
+      );
+
+
+    observadorGovBrDS.observe(
+      document.body,
+      {
+        childList:
+          true,
+
+        subtree:
+          true,
+
+        attributes:
+          true,
+
+        attributeFilter: [
+          'class'
+        ]
+      }
+    );
+
+  }
+
+
+  /* =========================================================
+     HEADER
+     ========================================================= */
+
+  function ativarHeaderGovBrDS_() {
+
+    const fallback =
+      document.getElementById(
+        'funderHeaderFallback'
+      );
+
+
+    const header =
+      document.getElementById(
+        'funderHeaderGovBR'
+      );
+
+
+    if (
+      !header ||
+      !customElements.get(
+        'br-header'
+      )
+    ) {
+      return;
+    }
+
+
+    if (fallback) {
+      fallback.hidden =
+        true;
+    }
+
+
+    header.hidden =
+      false;
+
+  }
+
+
+  /* =========================================================
+     BOOTSTRAP
+     ========================================================= */
+
+  async function prepararGovBrDS() {
+
+    const componentes = [
+      'br-header',
+      'br-button',
+      'br-card',
+      'br-tag',
+      'br-message',
+      'br-input',
+      'br-textarea',
+      'br-select',
+      'br-checkbox',
+      'br-datetime-picker',
+      'br-table',
+      'br-table-header',
+      'br-table-body',
+      'br-table-row',
+      'br-table-header-cell',
+      'br-table-cell'
+    ];
+
+
+    const resultados =
+      await Promise.all(
+        componentes.map(
+          async nome => ({
+            nome,
+
+            carregado:
+              await aguardarComponenteGovBR_(
+                nome
+              )
+          })
+        )
+      );
+
+
+    const ausentes =
+      resultados
+        .filter(
+          item =>
+            !item.carregado
+        )
+        .map(
+          item =>
+            item.nome
+        );
+
+
+    if (
+      ausentes.length
+    ) {
+
+      console.warn(
+        'FUNDERR: alguns componentes GovBR-DS não foram registrados:',
+        ausentes
+      );
+
+    }
+
+
+    ativarHeaderGovBrDS_();
+
+
+    migrarInterfaceGovBrDS_(
+      document
+    );
+
+
+    iniciarObservadorGovBrDS_();
+
+
+    document
+      .documentElement
+      .classList
+      .add(
+        'govbr-ds-completo'
+      );
+
+
+    console.info(
+      'FUNDERR: migração GovBR-DS v0.10.2 inicializada.'
+    );
+
+
+    return true;
+
+  }
+
+</script>

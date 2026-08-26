@@ -1,0 +1,2006 @@
+<script>
+
+  let patrimonioAtual =
+    null;
+
+  let patrimonioProcessoId =
+    null;
+
+
+  function registrarEventosPatrimonio() {
+
+    document
+      .getElementById(
+        'formPatrimonioItem'
+      )
+      .addEventListener(
+        'submit',
+        salvarItemPatrimonioUI
+      );
+
+
+    document
+      .getElementById(
+        'formPatrimonioDivida'
+      )
+      .addEventListener(
+        'submit',
+        salvarDividaPatrimonioUI
+      );
+
+
+    document
+      .getElementById(
+        'patrimonioUnidade'
+      )
+      .addEventListener(
+        'change',
+        atualizarUnidadeOutroPatrimonio
+      );
+
+
+    document
+      .getElementById(
+        'patrimonioQuantidade'
+      )
+      .addEventListener(
+        'input',
+        atualizarTotalItemPatrimonio
+      );
+
+
+    document
+      .getElementById(
+        'patrimonioValorUnitario'
+      )
+      .addEventListener(
+        'input',
+        atualizarTotalItemPatrimonio
+      );
+
+
+    document
+      .getElementById(
+        'patrimonioValorUnitario'
+      )
+      .addEventListener(
+        'blur',
+        event => {
+
+          const valor =
+            converterNumeroCliente(
+              event.target.value
+            );
+
+
+          event.target.value =
+            valor
+              ? formatarNumeroEditavel(
+                  valor
+                )
+              : '';
+
+        }
+      );
+
+
+    document
+      .getElementById(
+        'patrimonioSaldoDevedor'
+      )
+      .addEventListener(
+        'blur',
+        event => {
+
+          const valor =
+            converterNumeroCliente(
+              event.target.value
+            );
+
+
+          event.target.value =
+            valor
+              ? formatarNumeroEditavel(
+                  valor
+                )
+              : '';
+
+        }
+      );
+
+
+    document
+      .getElementById(
+        'dividasConfirmadasPatrimonio'
+      )
+      .addEventListener(
+        'change',
+        marcarFormularioAlterado
+      );
+
+  }
+
+
+  function abrirPatrimonio(
+    propostaId
+  ) {
+
+    if (
+      !abrirPagina(
+        'patrimonio'
+      )
+    ) {
+      return;
+    }
+
+
+    patrimonioProcessoId =
+      propostaId;
+
+
+    processoAtualId =
+      propostaId;
+
+
+    carregarPatrimonio(
+      propostaId
+    );
+
+  }
+
+
+  function voltarAoProcessoPatrimonio() {
+
+    const propostaId =
+      patrimonioProcessoId;
+
+
+    if (
+      !abrirPagina(
+        'processos'
+      )
+    ) {
+      return;
+    }
+
+
+    if (propostaId) {
+
+      abrirProcesso(
+        propostaId
+      );
+
+    }
+
+  }
+
+
+  function carregarPatrimonio(
+    propostaId
+  ) {
+
+    patrimonioProcessoId =
+      propostaId;
+
+
+    document
+      .getElementById(
+        'patrimonioProcessoNumero'
+      )
+      .textContent =
+        'Carregando...';
+
+
+    google.script.run
+
+      .withSuccessHandler(
+        renderizarPatrimonioCompleto
+      )
+
+      .withFailureHandler(
+        erro => {
+
+          document
+            .getElementById(
+              'mensagemPatrimonio'
+            )
+            .className =
+              'message erro';
+
+
+          document
+            .getElementById(
+              'mensagemPatrimonio'
+            )
+            .textContent =
+              erro.message ||
+              String(erro);
+
+        }
+      )
+
+      .obterPatrimonio(
+        propostaId
+      );
+
+  }
+
+
+  function renderizarPatrimonioCompleto(
+    dados
+  ) {
+
+    patrimonioAtual =
+      dados;
+
+
+    patrimonioProcessoId =
+      dados.processo.id;
+
+
+    document
+      .getElementById(
+        'patrimonioProcessoNumero'
+      )
+      .textContent =
+        `Processo ${dados.processo.numero}`;
+
+
+    document
+      .getElementById(
+        'patrimonioProcessoBeneficiario'
+      )
+      .textContent =
+        dados.processo.beneficiarioNome;
+
+
+    document
+      .getElementById(
+        'patrimonioContexto'
+      )
+      .innerHTML = `
+
+        ${detalhe(
+          'CPF',
+          formatarCpf(
+            dados.processo.beneficiarioCpf
+          )
+        )}
+
+        ${detalhe(
+          'Propriedade',
+          dados.processo.propriedadeNome ||
+          'Não vinculada'
+        )}
+
+        ${detalhe(
+          'Município',
+          dados.processo.propriedadeMunicipio ||
+          ''
+        )}
+
+        ${detalhe(
+          'Atividade',
+          dados.processo.atividade
+        )}
+
+      `;
+
+
+    renderizarStatusPatrimonio(
+      dados
+    );
+
+
+    renderizarItensPatrimonio(
+      dados
+    );
+
+
+    renderizarDividasPatrimonio(
+      dados
+    );
+
+
+    renderizarResumoPatrimonio(
+      dados
+    );
+
+
+    document
+      .getElementById(
+        'dividasConfirmadasPatrimonio'
+      )
+      .checked =
+        dados.levantamento
+          .dividasConfirmadas;
+
+
+    cancelarEdicaoItemPatrimonio(
+      false
+    );
+
+
+    cancelarEdicaoDividaPatrimonio(
+      false
+    );
+
+
+    marcarFormularioSalvo();
+
+  }
+
+
+  function renderizarStatusPatrimonio(
+    dados
+  ) {
+
+    const statusMap = {
+      PENDENTE:
+        'PENDENTE',
+
+      RASCUNHO:
+        'RASCUNHO',
+
+      EM_REVISAO:
+        'EM REVISÃO',
+
+      CONCLUIDO:
+        'CONCLUÍDO'
+    };
+
+
+    const status =
+      dados.levantamento.status;
+
+
+    const statusElement =
+      document.getElementById(
+        'patrimonioStatus'
+      );
+
+
+    statusElement.textContent =
+      statusMap[
+        status
+      ] || status;
+
+
+    statusElement.className =
+      'status';
+
+
+    if (
+      status ===
+      'CONCLUIDO'
+    ) {
+      statusElement.classList.add(
+        'status-concluido'
+      );
+    }
+
+
+    if (
+      status ===
+      'EM_REVISAO'
+    ) {
+      statusElement.classList.add(
+        'status-revisao'
+      );
+    }
+
+
+    const percentual =
+      dados.completude.percentual;
+
+
+    document
+      .getElementById(
+        'patrimonioCompletude'
+      )
+      .innerHTML = `
+
+        <div class="progresso-info">
+
+          <span>
+            Preparação para conclusão
+          </span>
+
+          <span>
+            ${percentual}%
+          </span>
+
+        </div>
+
+
+        <div class="progresso-barra">
+
+          <div
+            class="progresso-preenchimento"
+            style="width:${percentual}%"
+          ></div>
+
+        </div>
+
+      `;
+
+
+    const pendencias =
+      document.getElementById(
+        'patrimonioPendencias'
+      );
+
+
+    if (
+      dados.completude
+        .camposFaltantes
+        .length
+    ) {
+
+      pendencias.hidden =
+        false;
+
+
+      pendencias.className =
+        'pendencias-card';
+
+
+      pendencias.innerHTML = `
+
+        <strong>
+          Pendências para concluir:
+        </strong>
+
+        <div>
+          ${escaparHtml(
+            dados.completude
+              .camposFaltantes
+              .join('; ')
+          )}.
+        </div>
+
+      `;
+
+    } else {
+
+      pendencias.hidden =
+        false;
+
+
+      pendencias.className =
+        'pendencias-card completa';
+
+
+      pendencias.textContent =
+        status === 'CONCLUIDO'
+          ? 'Levantamento concluído.'
+          : 'O levantamento está pronto para ser concluído.';
+
+    }
+
+
+    const concluir =
+      document.getElementById(
+        'btnConcluirPatrimonio'
+      );
+
+
+    concluir.disabled =
+      status ===
+      'CONCLUIDO';
+
+
+    concluir.textContent =
+      status ===
+      'CONCLUIDO'
+        ? 'Levantamento concluído'
+        : (
+            status ===
+            'EM_REVISAO'
+              ? 'Concluir novamente'
+              : 'Concluir levantamento'
+          );
+
+  }
+
+
+  function renderizarItensPatrimonio(
+    dados
+  ) {
+
+    const container =
+      document.getElementById(
+        'listaItensPatrimonio'
+      );
+
+
+    const categorias =
+      Object.entries(
+        dados.categorias
+      );
+
+
+    container.innerHTML =
+      categorias
+        .map(
+          (
+            [
+              codigo,
+              nome
+            ]
+          ) => {
+
+            const itens =
+              dados.itens
+                .filter(
+                  item =>
+                    item.categoria ===
+                    codigo
+                );
+
+
+            const total =
+              dados.resumo
+                .totaisCategoria[
+                  codigo
+                ] || 0;
+
+
+            const linhas =
+              itens.length
+                ? itens
+                    .map(
+                      item => `
+
+                        <tr>
+
+                          <td>
+                            ${escaparHtml(
+                              item.especificacao
+                            )}
+                          </td>
+
+                          <td>
+                            ${escaparHtml(
+                              item.unidade
+                            )}
+                          </td>
+
+                          <td class="numero">
+                            ${escaparHtml(
+                              formatarNumeroEditavel(
+                                item.quantidade
+                              )
+                            )}
+                          </td>
+
+                          <td class="numero">
+                            ${escaparHtml(
+                              formatarMoedaBR(
+                                item.valorUnitario
+                              )
+                            )}
+                          </td>
+
+                          <td class="numero">
+                            <strong>
+                              ${escaparHtml(
+                                formatarMoedaBR(
+                                  item.valorTotal
+                                )
+                              )}
+                            </strong>
+                          </td>
+
+                          <td class="acoes-tabela">
+
+                            <button
+                              type="button"
+                              class="action-link"
+                              onclick="editarItemPatrimonio('${escaparAtributo(item.id)}')"
+                            >
+                              Editar
+                            </button>
+
+                            <button
+                              type="button"
+                              class="action-link danger"
+                              onclick="excluirItemPatrimonioUI('${escaparAtributo(item.id)}')"
+                            >
+                              Excluir
+                            </button>
+
+                          </td>
+
+                        </tr>
+
+                      `
+                    )
+                    .join('')
+                : `
+
+                    <tr>
+
+                      <td
+                        colspan="6"
+                        class="empty-category"
+                      >
+                        Nenhum item nesta categoria.
+                      </td>
+
+                    </tr>
+
+                  `;
+
+
+            return `
+
+              <div class="categoria-patrimonio">
+
+                <div class="categoria-patrimonio-header">
+
+                  <div>
+                    ${escaparHtml(nome)}
+                  </div>
+
+                  <strong>
+                    ${escaparHtml(
+                      formatarMoedaBR(
+                        total
+                      )
+                    )}
+                  </strong>
+
+                </div>
+
+
+                <div class="table-wrapper">
+
+                  <table>
+
+                    <thead>
+
+                      <tr>
+
+                        <th>
+                          Especificação
+                        </th>
+
+                        <th>
+                          Unidade
+                        </th>
+
+                        <th>
+                          Quantidade
+                        </th>
+
+                        <th>
+                          Valor unitário
+                        </th>
+
+                        <th>
+                          Total
+                        </th>
+
+                        <th>
+                          Ações
+                        </th>
+
+                      </tr>
+
+                    </thead>
+
+
+                    <tbody>
+                      ${linhas}
+                    </tbody>
+
+                  </table>
+
+                </div>
+
+              </div>
+
+            `;
+
+          }
+        )
+        .join('');
+
+  }
+
+
+  function atualizarUnidadeOutroPatrimonio() {
+
+    document
+      .getElementById(
+        'campoPatrimonioUnidadeOutro'
+      )
+      .hidden =
+        document
+          .getElementById(
+            'patrimonioUnidade'
+          )
+          .value !==
+        'OUTRO';
+
+  }
+
+
+  function atualizarTotalItemPatrimonio() {
+
+    const quantidade =
+      converterNumeroCliente(
+        document
+          .getElementById(
+            'patrimonioQuantidade'
+          )
+          .value
+      );
+
+
+    const valor =
+      converterNumeroCliente(
+        document
+          .getElementById(
+            'patrimonioValorUnitario'
+          )
+          .value
+      );
+
+
+    document
+      .getElementById(
+        'patrimonioValorTotal'
+      )
+      .value =
+        formatarMoedaBR(
+          quantidade *
+          valor
+        );
+
+  }
+
+
+  function salvarItemPatrimonioUI(
+    event
+  ) {
+
+    event.preventDefault();
+
+
+    const mensagem =
+      document.getElementById(
+        'mensagemItemPatrimonio'
+      );
+
+
+    const botao =
+      document.getElementById(
+        'btnSalvarItemPatrimonio'
+      );
+
+
+    const dados = {
+
+      propostaId:
+        patrimonioProcessoId,
+
+      id:
+        document
+          .getElementById(
+            'patrimonioItemId'
+          )
+          .value,
+
+      categoria:
+        document
+          .getElementById(
+            'patrimonioCategoria'
+          )
+          .value,
+
+      especificacao:
+        document
+          .getElementById(
+            'patrimonioEspecificacao'
+          )
+          .value,
+
+      unidade:
+        document
+          .getElementById(
+            'patrimonioUnidade'
+          )
+          .value,
+
+      unidadeOutro:
+        document
+          .getElementById(
+            'patrimonioUnidadeOutro'
+          )
+          .value,
+
+      quantidade:
+        document
+          .getElementById(
+            'patrimonioQuantidade'
+          )
+          .value,
+
+      valorUnitario:
+        document
+          .getElementById(
+            'patrimonioValorUnitario'
+          )
+          .value
+    };
+
+
+    botao.disabled =
+      true;
+
+
+    mensagem.className =
+      'message loading';
+
+
+    mensagem.textContent =
+      'Salvando item...';
+
+
+    google.script.run
+
+      .withSuccessHandler(
+        dadosAtualizados => {
+
+          marcarFormularioSalvo();
+
+
+          mensagem.className =
+            'message sucesso';
+
+
+          mensagem.textContent =
+            'Item salvo com sucesso.';
+
+
+          botao.disabled =
+            false;
+
+
+          renderizarPatrimonioCompleto(
+            dadosAtualizados
+          );
+
+        }
+      )
+
+      .withFailureHandler(
+        erro => {
+
+          botao.disabled =
+            false;
+
+
+          mensagem.className =
+            'message erro';
+
+
+          mensagem.textContent =
+            erro.message ||
+            String(erro);
+
+        }
+      )
+
+      .salvarItemPatrimonio(
+        dados
+      );
+
+  }
+
+
+  function editarItemPatrimonio(
+    id
+  ) {
+
+    const item =
+      patrimonioAtual
+        ?.itens
+        ?.find(
+          item =>
+            item.id === id
+        );
+
+
+    if (!item) {
+      return;
+    }
+
+
+    if (
+      !confirmarDescartarAlteracoes()
+    ) {
+      return;
+    }
+
+
+    document
+      .getElementById(
+        'patrimonioItemId'
+      )
+      .value =
+        item.id;
+
+
+    document
+      .getElementById(
+        'patrimonioCategoria'
+      )
+      .value =
+        item.categoria;
+
+
+    document
+      .getElementById(
+        'patrimonioEspecificacao'
+      )
+      .value =
+        item.especificacao;
+
+
+    const unidades = {
+      ha:
+        'HA',
+
+      'm²':
+        'M2',
+
+      m:
+        'M',
+
+      km:
+        'KM',
+
+      un:
+        'UN',
+
+      cabeça:
+        'CABECA'
+    };
+
+
+    if (
+      unidades[
+        item.unidade
+      ]
+    ) {
+
+      document
+        .getElementById(
+          'patrimonioUnidade'
+        )
+        .value =
+          unidades[
+            item.unidade
+          ];
+
+
+      document
+        .getElementById(
+          'patrimonioUnidadeOutro'
+        )
+        .value =
+          '';
+
+    } else {
+
+      document
+        .getElementById(
+          'patrimonioUnidade'
+        )
+        .value =
+          'OUTRO';
+
+
+      document
+        .getElementById(
+          'patrimonioUnidadeOutro'
+        )
+        .value =
+          item.unidade;
+
+    }
+
+
+    atualizarUnidadeOutroPatrimonio();
+
+
+    document
+      .getElementById(
+        'patrimonioQuantidade'
+      )
+      .value =
+        formatarNumeroEditavel(
+          item.quantidade
+        );
+
+
+    document
+      .getElementById(
+        'patrimonioValorUnitario'
+      )
+      .value =
+        formatarNumeroEditavel(
+          item.valorUnitario
+        );
+
+
+    atualizarTotalItemPatrimonio();
+
+
+    document
+      .getElementById(
+        'tituloFormItemPatrimonio'
+      )
+      .textContent =
+        'Editar item patrimonial';
+
+
+    document
+      .getElementById(
+        'btnSalvarItemPatrimonio'
+      )
+      .textContent =
+        'Salvar alterações';
+
+
+    document
+      .getElementById(
+        'btnCancelarItemPatrimonio'
+      )
+      .hidden =
+        false;
+
+
+    marcarFormularioSalvo();
+
+
+    document
+      .getElementById(
+        'formPatrimonioItem'
+      )
+      .scrollIntoView({
+        behavior:
+          'smooth',
+
+        block:
+          'center'
+      });
+
+  }
+
+
+  function cancelarEdicaoItemPatrimonio(
+    confirmar = true
+  ) {
+
+    if (
+      confirmar &&
+      !confirmarDescartarAlteracoes()
+    ) {
+      return;
+    }
+
+
+    document
+      .getElementById(
+        'formPatrimonioItem'
+      )
+      .reset();
+
+
+    document
+      .getElementById(
+        'patrimonioItemId'
+      )
+      .value =
+        '';
+
+
+    document
+      .getElementById(
+        'patrimonioValorTotal'
+      )
+      .value =
+        'R$ 0,00';
+
+
+    document
+      .getElementById(
+        'campoPatrimonioUnidadeOutro'
+      )
+      .hidden =
+        true;
+
+
+    document
+      .getElementById(
+        'tituloFormItemPatrimonio'
+      )
+      .textContent =
+        'Adicionar item patrimonial';
+
+
+    document
+      .getElementById(
+        'btnSalvarItemPatrimonio'
+      )
+      .textContent =
+        'Adicionar item';
+
+
+    document
+      .getElementById(
+        'btnSalvarItemPatrimonio'
+      )
+      .disabled =
+        false;
+
+
+    document
+      .getElementById(
+        'btnCancelarItemPatrimonio'
+      )
+      .hidden =
+        true;
+
+
+    document
+      .getElementById(
+        'mensagemItemPatrimonio'
+      )
+      .textContent =
+        '';
+
+
+    marcarFormularioSalvo();
+
+  }
+
+
+  function excluirItemPatrimonioUI(
+    id
+  ) {
+
+    if (
+      !window.confirm(
+        'Deseja realmente excluir este item patrimonial?'
+      )
+    ) {
+      return;
+    }
+
+
+    google.script.run
+
+      .withSuccessHandler(
+        dados => {
+
+          marcarFormularioSalvo();
+
+
+          renderizarPatrimonioCompleto(
+            dados
+          );
+
+        }
+      )
+
+      .withFailureHandler(
+        erro => {
+
+          alert(
+            erro.message ||
+            String(erro)
+          );
+
+        }
+      )
+
+      .excluirItemPatrimonio(
+        patrimonioProcessoId,
+        id
+      );
+
+  }
+
+
+  /* =======================================================
+     DÍVIDAS
+     ======================================================= */
+
+  function renderizarDividasPatrimonio(
+    dados
+  ) {
+
+    const container =
+      document.getElementById(
+        'listaDividasPatrimonio'
+      );
+
+
+    if (
+      !dados.dividas.length
+    ) {
+
+      container.innerHTML = `
+
+        <div class="empty">
+          Nenhuma dívida agropecuária informada.
+        </div>
+
+      `;
+
+      return;
+    }
+
+
+    container.innerHTML = `
+
+      <div class="table-wrapper">
+
+        <table>
+
+          <thead>
+
+            <tr>
+
+              <th>
+                Credor
+              </th>
+
+              <th>
+                Finalidade
+              </th>
+
+              <th>
+                Vencimento
+              </th>
+
+              <th>
+                Saldo devedor
+              </th>
+
+              <th>
+                Ações
+              </th>
+
+            </tr>
+
+          </thead>
+
+
+          <tbody>
+
+            ${
+              dados.dividas
+                .map(
+                  divida => `
+
+                    <tr>
+
+                      <td>
+                        ${escaparHtml(
+                          divida.credor
+                        )}
+                      </td>
+
+                      <td>
+                        ${escaparHtml(
+                          divida.finalidade
+                        )}
+                      </td>
+
+                      <td>
+                        ${escaparHtml(
+                          divida.vencimentoFormatado
+                        )}
+                      </td>
+
+                      <td class="numero">
+                        <strong>
+                          ${escaparHtml(
+                            formatarMoedaBR(
+                              divida.saldoDevedor
+                            )
+                          )}
+                        </strong>
+                      </td>
+
+                      <td class="acoes-tabela">
+
+                        <button
+                          type="button"
+                          class="action-link"
+                          onclick="editarDividaPatrimonio('${escaparAtributo(divida.id)}')"
+                        >
+                          Editar
+                        </button>
+
+                        <button
+                          type="button"
+                          class="action-link danger"
+                          onclick="excluirDividaPatrimonioUI('${escaparAtributo(divida.id)}')"
+                        >
+                          Excluir
+                        </button>
+
+                      </td>
+
+                    </tr>
+
+                  `
+                )
+                .join('')
+            }
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+    `;
+
+  }
+
+
+  function salvarDividaPatrimonioUI(
+    event
+  ) {
+
+    event.preventDefault();
+
+
+    const mensagem =
+      document.getElementById(
+        'mensagemDividaPatrimonio'
+      );
+
+
+    const botao =
+      document.getElementById(
+        'btnSalvarDividaPatrimonio'
+      );
+
+
+    const dados = {
+
+      propostaId:
+        patrimonioProcessoId,
+
+      id:
+        document
+          .getElementById(
+            'patrimonioDividaId'
+          )
+          .value,
+
+      credor:
+        document
+          .getElementById(
+            'patrimonioCredor'
+          )
+          .value,
+
+      finalidade:
+        document
+          .getElementById(
+            'patrimonioFinalidadeDivida'
+          )
+          .value,
+
+      vencimento:
+        document
+          .getElementById(
+            'patrimonioVencimentoDivida'
+          )
+          .value,
+
+      saldoDevedor:
+        document
+          .getElementById(
+            'patrimonioSaldoDevedor'
+          )
+          .value
+    };
+
+
+    botao.disabled =
+      true;
+
+
+    mensagem.className =
+      'message loading';
+
+
+    mensagem.textContent =
+      'Salvando dívida...';
+
+
+    google.script.run
+
+      .withSuccessHandler(
+        dadosAtualizados => {
+
+          marcarFormularioSalvo();
+
+
+          botao.disabled =
+            false;
+
+
+          mensagem.className =
+            'message sucesso';
+
+
+          mensagem.textContent =
+            'Dívida salva com sucesso.';
+
+
+          renderizarPatrimonioCompleto(
+            dadosAtualizados
+          );
+
+        }
+      )
+
+      .withFailureHandler(
+        erro => {
+
+          botao.disabled =
+            false;
+
+
+          mensagem.className =
+            'message erro';
+
+
+          mensagem.textContent =
+            erro.message ||
+            String(erro);
+
+        }
+      )
+
+      .salvarDividaPatrimonio(
+        dados
+      );
+
+  }
+
+
+  function editarDividaPatrimonio(
+    id
+  ) {
+
+    const divida =
+      patrimonioAtual
+        ?.dividas
+        ?.find(
+          item =>
+            item.id === id
+        );
+
+
+    if (!divida) {
+      return;
+    }
+
+
+    if (
+      !confirmarDescartarAlteracoes()
+    ) {
+      return;
+    }
+
+
+    document
+      .getElementById(
+        'patrimonioDividaId'
+      )
+      .value =
+        divida.id;
+
+
+    document
+      .getElementById(
+        'patrimonioCredor'
+      )
+      .value =
+        divida.credor;
+
+
+    document
+      .getElementById(
+        'patrimonioFinalidadeDivida'
+      )
+      .value =
+        divida.finalidade;
+
+
+    document
+      .getElementById(
+        'patrimonioVencimentoDivida'
+      )
+      .value =
+        divida.vencimento;
+
+
+    document
+      .getElementById(
+        'patrimonioSaldoDevedor'
+      )
+      .value =
+        formatarNumeroEditavel(
+          divida.saldoDevedor
+        );
+
+
+    document
+      .getElementById(
+        'btnSalvarDividaPatrimonio'
+      )
+      .textContent =
+        'Salvar alterações';
+
+
+    document
+      .getElementById(
+        'btnCancelarDividaPatrimonio'
+      )
+      .hidden =
+        false;
+
+
+    marcarFormularioSalvo();
+
+  }
+
+
+  function cancelarEdicaoDividaPatrimonio(
+    confirmar = true
+  ) {
+
+    if (
+      confirmar &&
+      !confirmarDescartarAlteracoes()
+    ) {
+      return;
+    }
+
+
+    document
+      .getElementById(
+        'formPatrimonioDivida'
+      )
+      .reset();
+
+
+    document
+      .getElementById(
+        'patrimonioDividaId'
+      )
+      .value =
+        '';
+
+
+    document
+      .getElementById(
+        'btnSalvarDividaPatrimonio'
+      )
+      .textContent =
+        'Adicionar dívida';
+
+
+    document
+      .getElementById(
+        'btnSalvarDividaPatrimonio'
+      )
+      .disabled =
+        false;
+
+
+    document
+      .getElementById(
+        'btnCancelarDividaPatrimonio'
+      )
+      .hidden =
+        true;
+
+
+    document
+      .getElementById(
+        'mensagemDividaPatrimonio'
+      )
+      .textContent =
+        '';
+
+
+    marcarFormularioSalvo();
+
+  }
+
+
+  function excluirDividaPatrimonioUI(
+    id
+  ) {
+
+    if (
+      !window.confirm(
+        'Deseja realmente excluir esta dívida?'
+      )
+    ) {
+      return;
+    }
+
+
+    google.script.run
+
+      .withSuccessHandler(
+        dados => {
+
+          marcarFormularioSalvo();
+
+
+          renderizarPatrimonioCompleto(
+            dados
+          );
+
+        }
+      )
+
+      .withFailureHandler(
+        erro => {
+
+          alert(
+            erro.message ||
+            String(erro)
+          );
+
+        }
+      )
+
+      .excluirDividaPatrimonio(
+        patrimonioProcessoId,
+        id
+      );
+
+  }
+
+
+  /* =======================================================
+     RESUMO
+     ======================================================= */
+
+  function renderizarResumoPatrimonio(
+    dados
+  ) {
+
+    document
+      .getElementById(
+        'resumoPatrimonio'
+      )
+      .innerHTML = `
+
+        <div class="resumo-linha">
+
+          <span>
+            Patrimônio agropecuário bruto
+          </span>
+
+          <strong>
+            ${formatarMoedaBR(
+              dados.resumo
+                .patrimonioBruto
+            )}
+          </strong>
+
+        </div>
+
+
+        <div class="resumo-linha secundaria">
+
+          <span>
+            Outros bens urbanos
+          </span>
+
+          <strong>
+            ${formatarMoedaBR(
+              dados.resumo
+                .outrosBensUrbanos
+            )}
+          </strong>
+
+        </div>
+
+
+        <div class="resumo-linha divida">
+
+          <span>
+            Dívidas agropecuárias
+          </span>
+
+          <strong>
+            - ${formatarMoedaBR(
+              dados.resumo
+                .totalDividas
+            )}
+          </strong>
+
+        </div>
+
+
+        <div class="resumo-linha destaque">
+
+          <span>
+            Patrimônio agropecuário líquido
+          </span>
+
+          <strong>
+            ${formatarMoedaBR(
+              dados.resumo
+                .patrimonioLiquido
+            )}
+          </strong>
+
+        </div>
+
+
+        <div class="resumo-nota">
+
+          Outros bens urbanos são apresentados separadamente
+          e não integram o patrimônio agropecuário bruto,
+          seguindo a regra identificada no FUNDERR legado.
+
+        </div>
+
+      `;
+
+  }
+
+
+  /* =======================================================
+     RASCUNHO / CONCLUSÃO
+     ======================================================= */
+
+  function existeEdicaoPatrimonialPendente() {
+
+    const item =
+      document
+        .getElementById(
+          'patrimonioItemId'
+        )
+        .value ||
+      document
+        .getElementById(
+          'patrimonioEspecificacao'
+        )
+        .value.trim();
+
+
+    const divida =
+      document
+        .getElementById(
+          'patrimonioDividaId'
+        )
+        .value ||
+      document
+        .getElementById(
+          'patrimonioCredor'
+        )
+        .value.trim();
+
+
+    return Boolean(
+      item ||
+      divida
+    );
+  }
+
+
+  function salvarRascunhoPatrimonioUI() {
+
+    const mensagem =
+      document.getElementById(
+        'mensagemPatrimonio'
+      );
+
+
+    if (
+      existeEdicaoPatrimonialPendente()
+    ) {
+
+      mensagem.className =
+        'message erro';
+
+
+      mensagem.textContent =
+        'Salve ou cancele o item/dívida em edição antes de salvar o rascunho.';
+
+
+      return;
+    }
+
+
+    mensagem.className =
+      'message loading';
+
+
+    mensagem.textContent =
+      'Salvando rascunho...';
+
+
+    google.script.run
+
+      .withSuccessHandler(
+        dados => {
+
+          marcarFormularioSalvo();
+
+
+          renderizarPatrimonioCompleto(
+            dados
+          );
+
+
+          mensagem.className =
+            'message sucesso';
+
+
+          mensagem.textContent =
+            'Rascunho salvo com sucesso.';
+
+        }
+      )
+
+      .withFailureHandler(
+        erro => {
+
+          mensagem.className =
+            'message erro';
+
+
+          mensagem.textContent =
+            erro.message ||
+            String(erro);
+
+        }
+      )
+
+      .salvarRascunhoPatrimonio(
+        patrimonioProcessoId,
+
+        document
+          .getElementById(
+            'dividasConfirmadasPatrimonio'
+          )
+          .checked
+      );
+
+  }
+
+
+  function concluirPatrimonioUI() {
+
+    const mensagem =
+      document.getElementById(
+        'mensagemPatrimonio'
+      );
+
+
+    if (
+      existeEdicaoPatrimonialPendente()
+    ) {
+
+      mensagem.className =
+        'message erro';
+
+
+      mensagem.textContent =
+        'Salve ou cancele o item/dívida em edição antes de concluir o levantamento.';
+
+
+      return;
+    }
+
+
+    mensagem.className =
+      'message loading';
+
+
+    mensagem.textContent =
+      'Validando levantamento...';
+
+
+    /*
+     * Primeiro persiste a confirmação das dívidas.
+     */
+    google.script.run
+
+      .withSuccessHandler(
+        () => {
+
+          google.script.run
+
+            .withSuccessHandler(
+              dados => {
+
+                marcarFormularioSalvo();
+
+
+                renderizarPatrimonioCompleto(
+                  dados
+                );
+
+
+                mensagem.className =
+                  'message sucesso';
+
+
+                mensagem.textContent =
+                  'Levantamento patrimonial concluído com sucesso.';
+
+              }
+            )
+
+            .withFailureHandler(
+              erro => {
+
+                mensagem.className =
+                  'message erro';
+
+
+                mensagem.textContent =
+                  erro.message ||
+                  String(erro);
+
+              }
+            )
+
+            .concluirLevantamentoPatrimonio(
+              patrimonioProcessoId
+            );
+
+        }
+      )
+
+      .withFailureHandler(
+        erro => {
+
+          mensagem.className =
+            'message erro';
+
+
+          mensagem.textContent =
+            erro.message ||
+            String(erro);
+
+        }
+      )
+
+      .salvarRascunhoPatrimonio(
+        patrimonioProcessoId,
+
+        document
+          .getElementById(
+            'dividasConfirmadasPatrimonio'
+          )
+          .checked
+      );
+
+  }
+
+</script>

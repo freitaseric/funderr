@@ -1,0 +1,2007 @@
+<script>
+
+  let financiamentoAtual =
+    null;
+
+  let financiamentoProcessoId =
+    null;
+
+
+  function registrarEventosFinanciamento() {
+
+    document
+      .getElementById(
+        'formFinanciamentoCondicoes'
+      )
+      .addEventListener(
+        'submit',
+        salvarCondicoesFinanciamentoUI
+      );
+
+
+    document
+      .getElementById(
+        'formGarantiaFinanciamento'
+      )
+      .addEventListener(
+        'submit',
+        salvarGarantiaUI
+      );
+
+
+    document
+      .getElementById(
+        'financiamentoLinhaCredito'
+      )
+      .addEventListener(
+        'change',
+        aplicarLinhaCreditoSelecionada
+      );
+
+
+    [
+      'financiamentoValorProposta',
+      'financiamentoPercentual',
+      'financiamentoAter',
+      'financiamentoTaxa'
+    ].forEach(
+      id => {
+
+        document
+          .getElementById(
+            id
+          )
+          .addEventListener(
+            'input',
+            atualizarResumoFinanciamentoUI
+          );
+
+
+        document
+          .getElementById(
+            id
+          )
+          .addEventListener(
+            'blur',
+            event => {
+
+              const valor =
+                converterNumeroCliente(
+                  event.target.value
+                );
+
+
+              event.target.value =
+                formatarNumeroEditavel(
+                  valor
+                );
+            }
+          );
+      }
+    );
+
+
+    document
+      .getElementById(
+        'garantiaCpf'
+      )
+      .addEventListener(
+        'input',
+        event => {
+
+          event.target.value =
+            formatarCpf(
+              event.target.value
+            );
+        }
+      );
+
+
+    document
+      .getElementById(
+        'garantiaTelefone'
+      )
+      .addEventListener(
+        'input',
+        event => {
+
+          event.target.value =
+            formatarTelefone(
+              event.target.value
+            );
+        }
+      );
+
+
+    document
+      .getElementById(
+        'garantiaValor'
+      )
+      .addEventListener(
+        'blur',
+        event => {
+
+          const valor =
+            converterNumeroCliente(
+              event.target.value
+            );
+
+
+          event.target.value =
+            formatarNumeroEditavel(
+              valor
+            );
+        }
+      );
+
+
+    [
+      'financiamentoGarantiasConfirmadas',
+      'financiamentoCronogramaConfirmado'
+    ].forEach(
+      id => {
+
+        document
+          .getElementById(
+            id
+          )
+          .addEventListener(
+            'change',
+            marcarFormularioAlterado
+          );
+      }
+    );
+  }
+
+
+  function abrirFinanciamento(
+    propostaId
+  ) {
+
+    if (
+      !abrirPagina(
+        'financiamento'
+      )
+    ) {
+      return;
+    }
+
+
+    financiamentoProcessoId =
+      propostaId;
+
+
+    processoAtualId =
+      propostaId;
+
+
+    carregarFinanciamento(
+      propostaId
+    );
+  }
+
+
+  function voltarAoProcessoFinanciamento() {
+
+    const id =
+      financiamentoProcessoId;
+
+
+    if (
+      !abrirPagina(
+        'processos'
+      )
+    ) {
+      return;
+    }
+
+
+    if (id) {
+      abrirProcesso(
+        id
+      );
+    }
+  }
+
+
+  function carregarFinanciamento(
+    propostaId
+  ) {
+
+    document
+      .getElementById(
+        'financiamentoProcessoNumero'
+      )
+      .textContent =
+        'Carregando...';
+
+
+    google.script.run
+
+      .withSuccessHandler(
+        renderizarFinanciamentoCompleto
+      )
+
+      .withFailureHandler(
+        erro => {
+
+          const mensagem =
+            document.getElementById(
+              'mensagemFinanciamento'
+            );
+
+
+          mensagem.className =
+            'message erro';
+
+
+          mensagem.textContent =
+            erro.message ||
+            String(erro);
+        }
+      )
+
+      .obterFinanciamento(
+        propostaId
+      );
+  }
+
+
+  function renderizarFinanciamentoCompleto(
+    dados
+  ) {
+
+    financiamentoAtual =
+      dados;
+
+
+    financiamentoProcessoId =
+      dados.processo.id;
+
+
+    document
+      .getElementById(
+        'financiamentoProcessoNumero'
+      )
+      .textContent =
+        `Processo ${dados.processo.numero}`;
+
+
+    document
+      .getElementById(
+        'financiamentoProcessoBeneficiario'
+      )
+      .textContent =
+        dados.processo
+          .beneficiarioNome;
+
+
+    document
+      .getElementById(
+        'financiamentoContexto'
+      )
+      .innerHTML = `
+
+        ${detalhe(
+          'CPF',
+          formatarCpf(
+            dados.processo
+              .beneficiarioCpf
+          )
+        )}
+
+        ${detalhe(
+          'Propriedade',
+          dados.processo
+            .propriedadeNome
+        )}
+
+        ${detalhe(
+          'Município',
+          dados.processo
+            .propriedadeMunicipio
+        )}
+
+        ${detalhe(
+          'Atividade',
+          dados.processo
+            .atividade
+        )}
+
+      `;
+
+
+    preencherLinhasCredito(
+      dados
+    );
+
+
+    preencherCondicoesFinanciamento(
+      dados
+    );
+
+
+    renderizarGarantias(
+      dados
+    );
+
+
+    renderizarCronograma(
+      dados
+    );
+
+
+    renderizarStatusFinanciamento(
+      dados
+    );
+
+
+    marcarFormularioSalvo();
+  }
+
+
+  function preencherLinhasCredito(
+    dados
+  ) {
+
+    const select =
+      document.getElementById(
+        'financiamentoLinhaCredito'
+      );
+
+
+    select.innerHTML = `
+
+      <option value="">
+        Parâmetros manuais
+      </option>
+
+    `;
+
+
+    dados.linhasCredito
+      .forEach(
+        linha => {
+
+          const option =
+            document.createElement(
+              'option'
+            );
+
+
+          option.value =
+            linha.id;
+
+
+          option.textContent =
+            linha.codigo
+              ? `${linha.codigo} — ${linha.nome}`
+              : linha.nome;
+
+
+          select.appendChild(
+            option
+          );
+        }
+      );
+
+
+    select.value =
+      dados.financiamento
+        .linhaCreditoId ||
+      '';
+  }
+
+
+  function preencherCondicoesFinanciamento(
+    dados
+  ) {
+
+    const f =
+      dados.financiamento;
+
+
+    document
+      .getElementById(
+        'financiamentoValorProposta'
+      )
+      .value =
+        f.valorProposta
+          ? formatarNumeroEditavel(
+              f.valorProposta
+            )
+          : '';
+
+
+    document
+      .getElementById(
+        'financiamentoPercentual'
+      )
+      .value =
+        f.percentualFinanciavel !== ''
+          ? formatarNumeroEditavel(
+              f.percentualFinanciavel
+            )
+          : '';
+
+
+    document
+      .getElementById(
+        'financiamentoAter'
+      )
+      .value =
+        f.percentualAter !== ''
+          ? formatarNumeroEditavel(
+              f.percentualAter
+            )
+          : '';
+
+
+    document
+      .getElementById(
+        'financiamentoTaxa'
+      )
+      .value =
+        f.taxaJurosAnual !== ''
+          ? formatarNumeroEditavel(
+              f.taxaJurosAnual
+            )
+          : '';
+
+
+    document
+      .getElementById(
+        'financiamentoPrazo'
+      )
+      .value =
+        f.prazoTotalAnos ||
+        '';
+
+
+    document
+      .getElementById(
+        'financiamentoCarencia'
+      )
+      .value =
+        String(
+          f.carenciaAnos ||
+          0
+        );
+
+
+    document
+      .getElementById(
+        'financiamentoJurosCarencia'
+      )
+      .value =
+        f.jurosCarencia ||
+        'PAGAR';
+
+
+    document
+      .getElementById(
+        'financiamentoGarantiasConfirmadas'
+      )
+      .checked =
+        f.garantiasConfirmadas;
+
+
+    document
+      .getElementById(
+        'financiamentoCronogramaConfirmado'
+      )
+      .checked =
+        f.cronogramaConfirmado;
+
+
+    const referencia =
+      dados
+        .financiamentoPretendidoIdentificacao;
+
+
+    const referenciaEl =
+      document.getElementById(
+        'financiamentoReferenciaV08'
+      );
+
+
+    if (
+      referencia > 0
+    ) {
+      referenciaEl.innerHTML = `
+
+        Financiamento informado em Usos e Fontes:
+        <strong>
+          ${formatarMoedaBR(referencia)}
+        </strong>
+
+        <button
+          type="button"
+          class="action-link"
+          onclick="usarValorFinanciamentoV08()"
+        >
+          Usar este valor
+        </button>
+
+      `;
+
+    } else {
+      referenciaEl.textContent =
+        'Nenhum valor de financiamento foi informado em Usos e Fontes.';
+    }
+
+
+    atualizarDetalhesLinhaCredito();
+
+
+    atualizarResumoFinanciamentoUI();
+  }
+
+
+  function usarValorFinanciamentoV08() {
+
+    if (!financiamentoAtual) {
+      return;
+    }
+
+
+    const valor =
+      financiamentoAtual
+        .financiamentoPretendidoIdentificacao;
+
+
+    document
+      .getElementById(
+        'financiamentoValorProposta'
+      )
+      .value =
+        formatarNumeroEditavel(
+          valor
+        );
+
+
+    atualizarResumoFinanciamentoUI();
+
+
+    marcarFormularioAlterado();
+  }
+
+
+  function aplicarLinhaCreditoSelecionada() {
+
+    const id =
+      document
+        .getElementById(
+          'financiamentoLinhaCredito'
+        )
+        .value;
+
+
+    if (!id) {
+      atualizarDetalhesLinhaCredito();
+
+      marcarFormularioAlterado();
+
+      return;
+    }
+
+
+    const linha =
+      financiamentoAtual
+        ?.linhasCredito
+        ?.find(
+          item =>
+            item.id === id
+        );
+
+
+    if (!linha) {
+      return;
+    }
+
+
+    if (
+      linha.percentualFinanciavelMax >
+      0
+    ) {
+      document
+        .getElementById(
+          'financiamentoPercentual'
+        )
+        .value =
+          formatarNumeroEditavel(
+            linha
+              .percentualFinanciavelMax
+          );
+    }
+
+
+    document
+      .getElementById(
+        'financiamentoAter'
+      )
+      .value =
+        formatarNumeroEditavel(
+          linha.percentualAterPadrao
+        );
+
+
+    document
+      .getElementById(
+        'financiamentoTaxa'
+      )
+      .value =
+        formatarNumeroEditavel(
+          linha.taxaJurosAnual
+        );
+
+
+    if (
+      linha.prazoMaxAnos > 0
+    ) {
+      document
+        .getElementById(
+          'financiamentoPrazo'
+        )
+        .value =
+          String(
+            Math.min(
+              linha.prazoMaxAnos,
+              7
+            )
+          );
+    }
+
+
+    if (
+      linha.carenciaMaxAnos >= 0
+    ) {
+      document
+        .getElementById(
+          'financiamentoCarencia'
+        )
+        .value =
+          String(
+            Math.min(
+              linha.carenciaMaxAnos,
+              6
+            )
+          );
+    }
+
+
+    atualizarDetalhesLinhaCredito();
+
+
+    atualizarResumoFinanciamentoUI();
+
+
+    marcarFormularioAlterado();
+  }
+
+
+  function atualizarDetalhesLinhaCredito() {
+
+    const id =
+      document
+        .getElementById(
+          'financiamentoLinhaCredito'
+        )
+        .value;
+
+
+    const container =
+      document.getElementById(
+        'financiamentoLinhaDetalhes'
+      );
+
+
+    if (!id) {
+      container.textContent =
+        'Os parâmetros serão informados manualmente.';
+
+      return;
+    }
+
+
+    const linha =
+      financiamentoAtual
+        ?.linhasCredito
+        ?.find(
+          item =>
+            item.id === id
+        );
+
+
+    if (!linha) {
+      container.textContent =
+        '';
+
+      return;
+    }
+
+
+    const detalhes = [];
+
+
+    if (
+      linha.tetoFinanciamento >
+      0
+    ) {
+      detalhes.push(
+        `Teto: ${formatarMoedaBR(linha.tetoFinanciamento)}`
+      );
+    }
+
+
+    if (
+      linha.prazoMaxAnos >
+      0
+    ) {
+      detalhes.push(
+        `Prazo máx.: ${linha.prazoMaxAnos} anos`
+      );
+    }
+
+
+    if (
+      linha.carenciaMaxAnos >
+      0
+    ) {
+      detalhes.push(
+        `Carência máx.: ${linha.carenciaMaxAnos} anos`
+      );
+    }
+
+
+    if (
+      linha.percentualFinanciavelMax >
+      0
+    ) {
+      detalhes.push(
+        `Financiável máx.: ${linha.percentualFinanciavelMax}%`
+      );
+    }
+
+
+    container.textContent =
+      detalhes.join(' • ') ||
+      linha.observacoes ||
+      '';
+  }
+
+
+  function atualizarResumoFinanciamentoUI() {
+
+    const valor =
+      converterNumeroCliente(
+        document
+          .getElementById(
+            'financiamentoValorProposta'
+          )
+          .value
+      );
+
+
+    const percentual =
+      converterNumeroCliente(
+        document
+          .getElementById(
+            'financiamentoPercentual'
+          )
+          .value
+      );
+
+
+    const ater =
+      converterNumeroCliente(
+        document
+          .getElementById(
+            'financiamentoAter'
+          )
+          .value
+      );
+
+
+    const valorFinanciado =
+      valor *
+      percentual /
+      100;
+
+
+    const valorAter =
+      valor *
+      ater /
+      100;
+
+
+    const valorProjeto =
+      valorFinanciado +
+      valorAter;
+
+
+    const prazo =
+      Number(
+        document
+          .getElementById(
+            'financiamentoPrazo'
+          )
+          .value ||
+        0
+      );
+
+
+    const carencia =
+      Number(
+        document
+          .getElementById(
+            'financiamentoCarencia'
+          )
+          .value ||
+        0
+      );
+
+
+    const parcelas =
+      Math.max(
+        0,
+        prazo -
+        carencia
+      );
+
+
+    document
+      .getElementById(
+        'financiamentoResumoValores'
+      )
+      .innerHTML = `
+
+        <div>
+          <span>Valor financiado</span>
+          <strong>
+            ${formatarMoedaBR(valorFinanciado)}
+          </strong>
+        </div>
+
+        <div>
+          <span>ATER</span>
+          <strong>
+            ${formatarMoedaBR(valorAter)}
+          </strong>
+        </div>
+
+        <div>
+          <span>Valor do projeto</span>
+          <strong>
+            ${formatarMoedaBR(valorProjeto)}
+          </strong>
+        </div>
+
+        <div>
+          <span>Amortizações</span>
+          <strong>
+            ${parcelas}
+          </strong>
+        </div>
+
+      `;
+  }
+
+
+  function salvarCondicoesFinanciamentoUI(
+    event
+  ) {
+
+    event.preventDefault();
+
+
+    const botao =
+      document.getElementById(
+        'btnSalvarCondicoesFinanciamento'
+      );
+
+
+    const mensagem =
+      document.getElementById(
+        'mensagemCondicoesFinanciamento'
+      );
+
+
+    const dados = {
+      propostaId:
+        financiamentoProcessoId,
+
+      linhaCreditoId:
+        document
+          .getElementById(
+            'financiamentoLinhaCredito'
+          )
+          .value,
+
+      valorProposta:
+        document
+          .getElementById(
+            'financiamentoValorProposta'
+          )
+          .value,
+
+      percentualFinanciavel:
+        document
+          .getElementById(
+            'financiamentoPercentual'
+          )
+          .value,
+
+      percentualAter:
+        document
+          .getElementById(
+            'financiamentoAter'
+          )
+          .value,
+
+      taxaJurosAnual:
+        document
+          .getElementById(
+            'financiamentoTaxa'
+          )
+          .value,
+
+      prazoTotalAnos:
+        document
+          .getElementById(
+            'financiamentoPrazo'
+          )
+          .value,
+
+      carenciaAnos:
+        document
+          .getElementById(
+            'financiamentoCarencia'
+          )
+          .value,
+
+      jurosCarencia:
+        document
+          .getElementById(
+            'financiamentoJurosCarencia'
+          )
+          .value
+    };
+
+
+    botao.disabled =
+      true;
+
+
+    mensagem.className =
+      'message loading';
+
+
+    mensagem.textContent =
+      'Salvando condições...';
+
+
+    google.script.run
+
+      .withSuccessHandler(
+        atualizados => {
+
+          botao.disabled =
+            false;
+
+
+          marcarFormularioSalvo();
+
+
+          renderizarFinanciamentoCompleto(
+            atualizados
+          );
+
+
+          mensagem.className =
+            'message sucesso';
+
+
+          mensagem.textContent =
+            'Condições salvas com sucesso.';
+        }
+      )
+
+      .withFailureHandler(
+        erro => {
+
+          botao.disabled =
+            false;
+
+
+          mensagem.className =
+            'message erro';
+
+
+          mensagem.textContent =
+            erro.message ||
+            String(erro);
+        }
+      )
+
+      .salvarFinanciamento(
+        dados
+      );
+  }
+
+
+  /* =======================================================
+     GARANTIAS
+     ======================================================= */
+
+  function renderizarGarantias(
+    dados
+  ) {
+
+    const container =
+      document.getElementById(
+        'listaGarantiasFinanciamento'
+      );
+
+
+    if (
+      !dados.garantias.length
+    ) {
+      container.innerHTML = `
+
+        <div class="empty">
+          Nenhuma garantia cadastrada.
+        </div>
+
+      `;
+
+      return;
+    }
+
+
+    container.innerHTML = `
+
+      <div class="table-wrapper">
+
+        <table>
+
+          <thead>
+
+            <tr>
+              <th>Tipo</th>
+              <th>Descrição</th>
+              <th>Garantidor</th>
+              <th>CPF</th>
+              <th>Valor estimado</th>
+              <th>Ações</th>
+            </tr>
+
+          </thead>
+
+
+          <tbody>
+
+            ${
+              dados.garantias
+                .map(
+                  item => `
+
+                    <tr>
+
+                      <td>
+                        ${escaparHtml(item.tipoNome)}
+                      </td>
+
+                      <td>
+                        ${escaparHtml(item.descricao)}
+                      </td>
+
+                      <td>
+                        ${escaparHtml(item.garantidorNome)}
+                      </td>
+
+                      <td>
+                        ${escaparHtml(
+                          formatarCpf(
+                            item.garantidorCpf
+                          )
+                        )}
+                      </td>
+
+                      <td class="numero">
+                        ${escaparHtml(
+                          formatarMoedaBR(
+                            item.valorEstimado
+                          )
+                        )}
+                      </td>
+
+                      <td class="acoes-tabela">
+
+                        <button
+                          type="button"
+                          class="action-link"
+                          onclick="editarGarantia('${escaparAtributo(item.id)}')"
+                        >
+                          Editar
+                        </button>
+
+                        <button
+                          type="button"
+                          class="action-link danger"
+                          onclick="excluirGarantiaUI('${escaparAtributo(item.id)}')"
+                        >
+                          Excluir
+                        </button>
+
+                      </td>
+
+                    </tr>
+
+                  `
+                )
+                .join('')
+            }
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+    `;
+  }
+
+
+  function salvarGarantiaUI(
+    event
+  ) {
+
+    event.preventDefault();
+
+
+    const botao =
+      document.getElementById(
+        'btnSalvarGarantia'
+      );
+
+
+    const mensagem =
+      document.getElementById(
+        'mensagemGarantia'
+      );
+
+
+    const dados = {
+      propostaId:
+        financiamentoProcessoId,
+
+      id:
+        document
+          .getElementById(
+            'garantiaFinanciamentoId'
+          )
+          .value,
+
+      tipo:
+        document
+          .getElementById(
+            'garantiaTipo'
+          )
+          .value,
+
+      descricao:
+        document
+          .getElementById(
+            'garantiaDescricao'
+          )
+          .value,
+
+      garantidorNome:
+        document
+          .getElementById(
+            'garantiaNome'
+          )
+          .value,
+
+      garantidorCpf:
+        document
+          .getElementById(
+            'garantiaCpf'
+          )
+          .value,
+
+      garantidorTelefone:
+        document
+          .getElementById(
+            'garantiaTelefone'
+          )
+          .value,
+
+      valorEstimado:
+        document
+          .getElementById(
+            'garantiaValor'
+          )
+          .value
+    };
+
+
+    botao.disabled =
+      true;
+
+
+    mensagem.className =
+      'message loading';
+
+
+    mensagem.textContent =
+      'Salvando garantia...';
+
+
+    google.script.run
+
+      .withSuccessHandler(
+        atualizados => {
+
+          botao.disabled =
+            false;
+
+
+          cancelarEdicaoGarantia(
+            false
+          );
+
+
+          renderizarFinanciamentoCompleto(
+            atualizados
+          );
+
+
+          mensagem.className =
+            'message sucesso';
+
+
+          mensagem.textContent =
+            'Garantia salva com sucesso.';
+        }
+      )
+
+      .withFailureHandler(
+        erro => {
+
+          botao.disabled =
+            false;
+
+
+          mensagem.className =
+            'message erro';
+
+
+          mensagem.textContent =
+            erro.message ||
+            String(erro);
+        }
+      )
+
+      .salvarGarantiaFinanciamento(
+        dados
+      );
+  }
+
+
+  function editarGarantia(
+    id
+  ) {
+
+    const item =
+      financiamentoAtual
+        ?.garantias
+        ?.find(
+          garantia =>
+            garantia.id === id
+        );
+
+
+    if (!item) {
+      return;
+    }
+
+
+    document
+      .getElementById(
+        'garantiaFinanciamentoId'
+      )
+      .value =
+        item.id;
+
+
+    document
+      .getElementById(
+        'garantiaTipo'
+      )
+      .value =
+        item.tipo;
+
+
+    document
+      .getElementById(
+        'garantiaDescricao'
+      )
+      .value =
+        item.descricao;
+
+
+    document
+      .getElementById(
+        'garantiaNome'
+      )
+      .value =
+        item.garantidorNome;
+
+
+    document
+      .getElementById(
+        'garantiaCpf'
+      )
+      .value =
+        formatarCpf(
+          item.garantidorCpf
+        );
+
+
+    document
+      .getElementById(
+        'garantiaTelefone'
+      )
+      .value =
+        formatarTelefone(
+          item.garantidorTelefone
+        );
+
+
+    document
+      .getElementById(
+        'garantiaValor'
+      )
+      .value =
+        formatarNumeroEditavel(
+          item.valorEstimado
+        );
+
+
+    document
+      .getElementById(
+        'btnSalvarGarantia'
+      )
+      .textContent =
+        'Salvar alterações';
+
+
+    document
+      .getElementById(
+        'btnCancelarGarantia'
+      )
+      .hidden =
+        false;
+
+
+    marcarFormularioSalvo();
+  }
+
+
+  function cancelarEdicaoGarantia(
+    confirmar = true
+  ) {
+
+    if (
+      confirmar &&
+      !confirmarDescartarAlteracoes()
+    ) {
+      return;
+    }
+
+
+    document
+      .getElementById(
+        'formGarantiaFinanciamento'
+      )
+      .reset();
+
+
+    document
+      .getElementById(
+        'garantiaFinanciamentoId'
+      )
+      .value =
+        '';
+
+
+    document
+      .getElementById(
+        'btnSalvarGarantia'
+      )
+      .textContent =
+        'Adicionar garantia';
+
+
+    document
+      .getElementById(
+        'btnSalvarGarantia'
+      )
+      .disabled =
+        false;
+
+
+    document
+      .getElementById(
+        'btnCancelarGarantia'
+      )
+      .hidden =
+        true;
+
+
+    marcarFormularioSalvo();
+  }
+
+
+  function excluirGarantiaUI(
+    id
+  ) {
+
+    if (
+      !window.confirm(
+        'Deseja realmente excluir esta garantia?'
+      )
+    ) {
+      return;
+    }
+
+
+    google.script.run
+
+      .withSuccessHandler(
+        atualizados => {
+
+          marcarFormularioSalvo();
+
+
+          renderizarFinanciamentoCompleto(
+            atualizados
+          );
+        }
+      )
+
+      .withFailureHandler(
+        erro => {
+
+          alert(
+            erro.message ||
+            String(erro)
+          );
+        }
+      )
+
+      .excluirGarantiaFinanciamento(
+        financiamentoProcessoId,
+        id
+      );
+  }
+
+
+  /* =======================================================
+     CRONOGRAMA
+     ======================================================= */
+
+  function renderizarCronograma(
+    dados
+  ) {
+
+    const resumo =
+      dados.cronograma;
+
+
+    document
+      .getElementById(
+        'resumoCronogramaFinanciamento'
+      )
+      .innerHTML = `
+
+        <div>
+          <span>Total de juros</span>
+          <strong>
+            ${formatarMoedaBR(resumo.totalJuros)}
+          </strong>
+        </div>
+
+        <div>
+          <span>Total amortizado</span>
+          <strong>
+            ${formatarMoedaBR(resumo.totalAmortizacao)}
+          </strong>
+        </div>
+
+        <div>
+          <span>Total de pagamentos</span>
+          <strong>
+            ${formatarMoedaBR(resumo.totalPrestacoes)}
+          </strong>
+        </div>
+
+        <div>
+          <span>Anos com insuficiência</span>
+          <strong>
+            ${resumo.anosCapacidadeInsuficiente}
+          </strong>
+        </div>
+
+      `;
+
+
+    const tabela =
+      document.getElementById(
+        'tabelaCronogramaFinanciamento'
+      );
+
+
+    if (
+      !resumo.parcelas.length
+    ) {
+      tabela.innerHTML = `
+
+        <div class="empty">
+          Salve as condições do financiamento
+          para gerar o cronograma.
+        </div>
+
+      `;
+
+      return;
+    }
+
+
+    tabela.innerHTML = `
+
+      <table class="financiamento-cronograma">
+
+        <thead>
+
+          <tr>
+            <th>Ano</th>
+            <th>Saldo inicial</th>
+            <th>Amortização</th>
+            <th>Juros</th>
+            <th>Prestação</th>
+            <th>Saldo final</th>
+            <th>Resultado operacional</th>
+            <th>Após dívida</th>
+            <th>Capacidade</th>
+          </tr>
+
+        </thead>
+
+
+        <tbody>
+
+          ${
+            resumo.parcelas
+              .map(
+                parcela => `
+
+                  <tr>
+
+                    <td>
+                      Ano ${parcela.ano}
+                    </td>
+
+                    <td class="numero">
+                      ${formatarMoedaBR(parcela.saldoInicial)}
+                    </td>
+
+                    <td class="numero">
+                      ${formatarMoedaBR(parcela.amortizacao)}
+                    </td>
+
+                    <td class="numero">
+                      ${formatarMoedaBR(parcela.juros)}
+                    </td>
+
+                    <td class="numero">
+                      <strong>
+                        ${formatarMoedaBR(parcela.prestacao)}
+                      </strong>
+                    </td>
+
+                    <td class="numero">
+                      ${formatarMoedaBR(parcela.saldoFinal)}
+                    </td>
+
+                    <td class="numero">
+                      ${formatarMoedaBR(parcela.resultadoOperacional)}
+                    </td>
+
+                    <td class="numero">
+                      ${formatarMoedaBR(parcela.saldoAposDivida)}
+                    </td>
+
+                    <td>
+
+                      <span
+                        class="${
+                          parcela.capacidadeSuficiente
+                            ? 'capacidade-ok'
+                            : 'capacidade-insuficiente'
+                        }"
+                      >
+                        ${
+                          parcela.capacidadeSuficiente
+                            ? 'SUFICIENTE'
+                            : 'INSUFICIENTE'
+                        }
+                      </span>
+
+                    </td>
+
+                  </tr>
+
+                `
+              )
+              .join('')
+          }
+
+        </tbody>
+
+      </table>
+
+    `;
+
+
+    const aviso =
+      document.getElementById(
+        'avisoCapacidadeFinanciamento'
+      );
+
+
+    if (
+      resumo
+        .anosCapacidadeInsuficiente >
+      0
+    ) {
+      aviso.className =
+        'capacidade-aviso insuficiente';
+
+
+      aviso.innerHTML = `
+
+        <strong>
+          Atenção:
+        </strong>
+
+        o fluxo operacional não cobre integralmente
+        as obrigações financeiras em
+        ${resumo.anosCapacidadeInsuficiente}
+        ano(s).
+
+        Isso é um alerta técnico e não bloqueia
+        automaticamente a conclusão.
+
+      `;
+
+    } else if (
+      resumo.parcelas.length
+    ) {
+      aviso.className =
+        'capacidade-aviso suficiente';
+
+
+      aviso.textContent =
+        'O resultado operacional cobre as prestações projetadas em todos os anos.';
+    }
+  }
+
+
+  /* =======================================================
+     STATUS
+     ======================================================= */
+
+  function renderizarStatusFinanciamento(
+    dados
+  ) {
+
+    const mapa = {
+      PENDENTE:
+        'PENDENTE',
+
+      RASCUNHO:
+        'RASCUNHO',
+
+      EM_REVISAO:
+        'EM REVISÃO',
+
+      CONCLUIDO:
+        'CONCLUÍDO'
+    };
+
+
+    const status =
+      dados.financiamento.status;
+
+
+    const elemento =
+      document.getElementById(
+        'financiamentoStatus'
+      );
+
+
+    elemento.textContent =
+      mapa[status] ||
+      status;
+
+
+    elemento.className =
+      'status';
+
+
+    if (
+      status ===
+      'CONCLUIDO'
+    ) {
+      elemento.classList.add(
+        'status-concluido'
+      );
+    }
+
+
+    if (
+      status ===
+      'EM_REVISAO'
+    ) {
+      elemento.classList.add(
+        'status-revisao'
+      );
+    }
+
+
+    document
+      .getElementById(
+        'financiamentoCompletude'
+      )
+      .innerHTML = `
+
+        <div class="progresso-info">
+
+          <span>
+            Preparação para conclusão
+          </span>
+
+          <span>
+            ${dados.completude.percentual}%
+          </span>
+
+        </div>
+
+        <div class="progresso-barra">
+
+          <div
+            class="progresso-preenchimento"
+            style="width:${dados.completude.percentual}%"
+          ></div>
+
+        </div>
+
+      `;
+
+
+    const pendencias =
+      document.getElementById(
+        'financiamentoPendencias'
+      );
+
+
+    pendencias.hidden =
+      false;
+
+
+    if (
+      dados.completude
+        .camposFaltantes
+        .length
+    ) {
+      pendencias.className =
+        'pendencias-card';
+
+
+      pendencias.innerHTML = `
+
+        <strong>
+          Pendências para concluir:
+        </strong>
+
+        <div>
+          ${escaparHtml(
+            dados.completude
+              .camposFaltantes
+              .join('; ')
+          )}.
+        </div>
+
+      `;
+
+    } else {
+      pendencias.className =
+        'pendencias-card completa';
+
+
+      pendencias.textContent =
+        status ===
+        'CONCLUIDO'
+          ? 'Financiamento concluído.'
+          : 'O financiamento está pronto para ser concluído.';
+    }
+
+
+    const botao =
+      document.getElementById(
+        'btnConcluirFinanciamento'
+      );
+
+
+    botao.disabled =
+      status ===
+      'CONCLUIDO';
+
+
+    botao.textContent =
+      status ===
+      'CONCLUIDO'
+        ? 'Financiamento concluído'
+        : (
+            status ===
+            'EM_REVISAO'
+              ? 'Concluir novamente'
+              : 'Concluir financiamento'
+          );
+  }
+
+
+  function salvarRascunhoFinanciamentoUI(
+    callback
+  ) {
+
+    const mensagem =
+      document.getElementById(
+        'mensagemFinanciamento'
+      );
+
+
+    mensagem.className =
+      'message loading';
+
+
+    mensagem.textContent =
+      'Salvando rascunho...';
+
+
+    google.script.run
+
+      .withSuccessHandler(
+        atualizados => {
+
+          marcarFormularioSalvo();
+
+
+          renderizarFinanciamentoCompleto(
+            atualizados
+          );
+
+
+          mensagem.className =
+            'message sucesso';
+
+
+          mensagem.textContent =
+            'Rascunho salvo com sucesso.';
+
+
+          if (
+            typeof callback ===
+            'function'
+          ) {
+            callback();
+          }
+        }
+      )
+
+      .withFailureHandler(
+        erro => {
+
+          mensagem.className =
+            'message erro';
+
+
+          mensagem.textContent =
+            erro.message ||
+            String(erro);
+        }
+      )
+
+      .salvarRascunhoFinanciamento(
+        financiamentoProcessoId,
+
+        document
+          .getElementById(
+            'financiamentoGarantiasConfirmadas'
+          )
+          .checked,
+
+        document
+          .getElementById(
+            'financiamentoCronogramaConfirmado'
+          )
+          .checked
+      );
+  }
+
+
+  function concluirFinanciamentoUI() {
+
+    const mensagem =
+      document.getElementById(
+        'mensagemFinanciamento'
+      );
+
+
+    salvarRascunhoFinanciamentoUI(
+      () => {
+
+        mensagem.className =
+          'message loading';
+
+
+        mensagem.textContent =
+          'Validando financiamento...';
+
+
+        google.script.run
+
+          .withSuccessHandler(
+            atualizados => {
+
+              marcarFormularioSalvo();
+
+
+              renderizarFinanciamentoCompleto(
+                atualizados
+              );
+
+
+              mensagem.className =
+                'message sucesso';
+
+
+              mensagem.textContent =
+                'Financiamento concluído com sucesso.';
+            }
+          )
+
+          .withFailureHandler(
+            erro => {
+
+              mensagem.className =
+                'message erro';
+
+
+              mensagem.textContent =
+                erro.message ||
+                String(erro);
+            }
+          )
+
+          .concluirFinanciamento(
+            financiamentoProcessoId
+          );
+      }
+    );
+  }
+
+</script>

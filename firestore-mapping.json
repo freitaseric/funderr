@@ -1,0 +1,20 @@
+{
+  "users/{uid}": "Novo: identidade, perfil, permissões e status do usuário.",
+  "beneficiaries/{beneficiaryId}": "Beneficiarios",
+  "beneficiaries/{beneficiaryId}/references/{referenceId}": "BeneficiarioReferencias",
+  "properties/{propertyId}": "Propriedades",
+  "proposals/{proposalId}": "Propostas + resumo de progresso/ownership",
+  "proposals/{proposalId}/sections/patrimony": "PatrimonioLevantamentos",
+  "proposals/{proposalId}/patrimonyItems/{itemId}": "PatrimonioItens",
+  "proposals/{proposalId}/patrimonyDebts/{debtId}": "PatrimonioDividas",
+  "proposals/{proposalId}/sections/identification": "PropostaIdentificacoes",
+  "proposals/{proposalId}/jobs/{jobId}": "PropostaEmpregos",
+  "proposals/{proposalId}/usesSources/{itemId}": "PropostaUsosFontes",
+  "proposals/{proposalId}/sections/cashFlow": "FluxoCaixa",
+  "proposals/{proposalId}/cashFlowItems/{itemId}": "FluxoCaixaItens",
+  "creditLines/{creditLineId}": "LinhasCredito",
+  "proposals/{proposalId}/sections/financing": "Financiamentos",
+  "proposals/{proposalId}/guarantees/{guaranteeId}": "FinanciamentoGarantias",
+  "proposals/{proposalId}/documents/{documentId}": "Novo módulo: metadados de documentos no Firestore; arquivo no Cloud Storage.",
+  "auditLogs/{eventId}": "Novo: trilha de auditoria imutável."
+}

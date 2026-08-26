@@ -1,0 +1,1688 @@
+<script>
+
+  let fluxoAtual =
+    null;
+
+  let fluxoProcessoId =
+    null;
+
+
+  function registrarEventosFluxoCaixa() {
+
+    document
+      .getElementById(
+        'formFluxoCaixaItem'
+      )
+      .addEventListener(
+        'submit',
+        salvarItemFluxoUI
+      );
+
+
+    document
+      .getElementById(
+        'fluxoUnidade'
+      )
+      .addEventListener(
+        'change',
+        atualizarUnidadeOutroFluxo
+      );
+
+
+    [
+      'fluxoQuantidade',
+      'fluxoValorUnitario'
+    ].forEach(
+      id => {
+
+        document
+          .getElementById(
+            id
+          )
+          .addEventListener(
+            'input',
+            atualizarAno1Fluxo
+          );
+
+      }
+    );
+
+
+    document
+      .getElementById(
+        'fluxoValorUnitario'
+      )
+      .addEventListener(
+        'blur',
+        formatarCampoFluxoMoeda_
+      );
+
+
+    document
+      .querySelectorAll(
+        '[data-fluxo-ano]'
+      )
+      .forEach(
+        input => {
+
+          input.addEventListener(
+            'blur',
+            formatarCampoFluxoMoeda_
+          );
+
+        }
+      );
+
+
+    document
+      .getElementById(
+        'fluxoProjecaoConfirmada'
+      )
+      .addEventListener(
+        'change',
+        marcarFormularioAlterado
+      );
+  }
+
+
+  function formatarCampoFluxoMoeda_(
+    event
+  ) {
+
+    const valor =
+      converterNumeroCliente(
+        event.target.value
+      );
+
+
+    event.target.value =
+      formatarNumeroEditavel(
+        valor
+      );
+  }
+
+
+  function abrirFluxoCaixa(
+    propostaId
+  ) {
+
+    if (
+      !abrirPagina(
+        'fluxo-caixa'
+      )
+    ) {
+      return;
+    }
+
+
+    fluxoProcessoId =
+      propostaId;
+
+
+    processoAtualId =
+      propostaId;
+
+
+    carregarFluxoCaixa(
+      propostaId
+    );
+  }
+
+
+  function voltarAoProcessoFluxoCaixa() {
+
+    const id =
+      fluxoProcessoId;
+
+
+    if (
+      !abrirPagina(
+        'processos'
+      )
+    ) {
+      return;
+    }
+
+
+    if (id) {
+      abrirProcesso(
+        id
+      );
+    }
+  }
+
+
+  function carregarFluxoCaixa(
+    propostaId
+  ) {
+
+    document
+      .getElementById(
+        'fluxoProcessoNumero'
+      )
+      .textContent =
+        'Carregando...';
+
+
+    google.script.run
+
+      .withSuccessHandler(
+        renderizarFluxoCompleto
+      )
+
+      .withFailureHandler(
+        erro => {
+
+          const mensagem =
+            document.getElementById(
+              'mensagemFluxo'
+            );
+
+
+          mensagem.className =
+            'message erro';
+
+
+          mensagem.textContent =
+            erro.message ||
+            String(erro);
+        }
+      )
+
+      .obterFluxoCaixa(
+        propostaId
+      );
+  }
+
+
+  function renderizarFluxoCompleto(
+    dados
+  ) {
+
+    fluxoAtual =
+      dados;
+
+
+    fluxoProcessoId =
+      dados.processo.id;
+
+
+    document
+      .getElementById(
+        'fluxoProcessoNumero'
+      )
+      .textContent =
+        `Processo ${dados.processo.numero}`;
+
+
+    document
+      .getElementById(
+        'fluxoProcessoBeneficiario'
+      )
+      .textContent =
+        dados.processo
+          .beneficiarioNome;
+
+
+    document
+      .getElementById(
+        'fluxoContexto'
+      )
+      .innerHTML = `
+
+        ${detalhe(
+          'CPF',
+          formatarCpf(
+            dados.processo
+              .beneficiarioCpf
+          )
+        )}
+
+        ${detalhe(
+          'Propriedade',
+          dados.processo
+            .propriedadeNome
+        )}
+
+        ${detalhe(
+          'Município',
+          dados.processo
+            .propriedadeMunicipio
+        )}
+
+        ${detalhe(
+          'Atividade',
+          dados.processo
+            .atividade
+        )}
+
+      `;
+
+
+    document
+      .getElementById(
+        'fluxoProjecaoConfirmada'
+      )
+      .checked =
+        dados.fluxo
+          .projecaoConfirmada;
+
+
+    renderizarStatusFluxo(
+      dados
+    );
+
+
+    renderizarItensFluxo(
+      dados
+    );
+
+
+    renderizarResumoFluxo(
+      dados
+    );
+
+
+    cancelarEdicaoItemFluxo(
+      false
+    );
+
+
+    marcarFormularioSalvo();
+  }
+
+
+  function renderizarStatusFluxo(
+    dados
+  ) {
+
+    const mapa = {
+      PENDENTE:
+        'PENDENTE',
+
+      RASCUNHO:
+        'RASCUNHO',
+
+      EM_REVISAO:
+        'EM REVISÃO',
+
+      CONCLUIDO:
+        'CONCLUÍDO'
+    };
+
+
+    const status =
+      dados.fluxo.status;
+
+
+    const elemento =
+      document.getElementById(
+        'fluxoStatus'
+      );
+
+
+    elemento.textContent =
+      mapa[status] ||
+      status;
+
+
+    elemento.className =
+      'status';
+
+
+    if (
+      status ===
+      'CONCLUIDO'
+    ) {
+      elemento.classList.add(
+        'status-concluido'
+      );
+    }
+
+
+    if (
+      status ===
+      'EM_REVISAO'
+    ) {
+      elemento.classList.add(
+        'status-revisao'
+      );
+    }
+
+
+    document
+      .getElementById(
+        'fluxoCompletude'
+      )
+      .innerHTML = `
+
+        <div class="progresso-info">
+
+          <span>
+            Preparação para conclusão
+          </span>
+
+          <span>
+            ${dados.completude.percentual}%
+          </span>
+
+        </div>
+
+
+        <div class="progresso-barra">
+
+          <div
+            class="progresso-preenchimento"
+            style="width:${dados.completude.percentual}%"
+          ></div>
+
+        </div>
+
+      `;
+
+
+    const pendencias =
+      document.getElementById(
+        'fluxoPendencias'
+      );
+
+
+    pendencias.hidden =
+      false;
+
+
+    if (
+      dados.completude
+        .camposFaltantes
+        .length
+    ) {
+
+      pendencias.className =
+        'pendencias-card';
+
+
+      pendencias.innerHTML = `
+
+        <strong>
+          Pendências para concluir:
+        </strong>
+
+        <div>
+          ${escaparHtml(
+            dados.completude
+              .camposFaltantes
+              .join('; ')
+          )}.
+        </div>
+
+      `;
+
+    } else {
+
+      pendencias.className =
+        'pendencias-card completa';
+
+
+      pendencias.textContent =
+        status ===
+        'CONCLUIDO'
+          ? 'Fluxo de caixa concluído.'
+          : 'O fluxo de caixa está pronto para ser concluído.';
+    }
+
+
+    const botao =
+      document.getElementById(
+        'btnConcluirFluxo'
+      );
+
+
+    botao.disabled =
+      status ===
+      'CONCLUIDO';
+
+
+    botao.textContent =
+      status ===
+      'CONCLUIDO'
+        ? 'Fluxo de caixa concluído'
+        : (
+            status ===
+            'EM_REVISAO'
+              ? 'Concluir novamente'
+              : 'Concluir fluxo de caixa'
+          );
+  }
+
+
+  function atualizarUnidadeOutroFluxo() {
+
+    document
+      .getElementById(
+        'campoFluxoUnidadeOutro'
+      )
+      .hidden =
+        document
+          .getElementById(
+            'fluxoUnidade'
+          )
+          .value !==
+        'OUTRO';
+  }
+
+
+  function atualizarAno1Fluxo() {
+
+    const quantidade =
+      converterNumeroCliente(
+        document
+          .getElementById(
+            'fluxoQuantidade'
+          )
+          .value
+      );
+
+
+    const valor =
+      converterNumeroCliente(
+        document
+          .getElementById(
+            'fluxoValorUnitario'
+          )
+          .value
+      );
+
+
+    document
+      .getElementById(
+        'fluxoAno1'
+      )
+      .value =
+        formatarMoedaBR(
+          quantidade *
+          valor
+        );
+  }
+
+
+  function replicarAno1Fluxo() {
+
+    const quantidade =
+      converterNumeroCliente(
+        document
+          .getElementById(
+            'fluxoQuantidade'
+          )
+          .value
+      );
+
+
+    const valorUnitario =
+      converterNumeroCliente(
+        document
+          .getElementById(
+            'fluxoValorUnitario'
+          )
+          .value
+      );
+
+
+    const valor =
+      quantidade *
+      valorUnitario;
+
+
+    for (
+      let ano = 2;
+      ano <= 7;
+      ano++
+    ) {
+      document
+        .getElementById(
+          `fluxoAno${ano}`
+        )
+        .value =
+          formatarNumeroEditavel(
+            valor
+          );
+    }
+
+
+    marcarFormularioAlterado();
+  }
+
+
+  function novoItemFluxoTipo(
+    tipo
+  ) {
+
+    if (
+      !confirmarDescartarAlteracoes()
+    ) {
+      return;
+    }
+
+
+    cancelarEdicaoItemFluxo(
+      false
+    );
+
+
+    document
+      .getElementById(
+        'fluxoTipo'
+      )
+      .value =
+        tipo;
+
+
+    document
+      .getElementById(
+        'fluxoDescricao'
+      )
+      .focus();
+  }
+
+
+  function salvarItemFluxoUI(
+    event
+  ) {
+
+    event.preventDefault();
+
+
+    const botao =
+      document.getElementById(
+        'btnSalvarItemFluxo'
+      );
+
+
+    const mensagem =
+      document.getElementById(
+        'mensagemItemFluxo'
+      );
+
+
+    const dados = {
+      propostaId:
+        fluxoProcessoId,
+
+      id:
+        document
+          .getElementById(
+            'fluxoItemId'
+          )
+          .value,
+
+      tipo:
+        document
+          .getElementById(
+            'fluxoTipo'
+          )
+          .value,
+
+      descricao:
+        document
+          .getElementById(
+            'fluxoDescricao'
+          )
+          .value,
+
+      unidade:
+        document
+          .getElementById(
+            'fluxoUnidade'
+          )
+          .value,
+
+      unidadeOutro:
+        document
+          .getElementById(
+            'fluxoUnidadeOutro'
+          )
+          .value,
+
+      quantidade:
+        document
+          .getElementById(
+            'fluxoQuantidade'
+          )
+          .value,
+
+      valorUnitario:
+        document
+          .getElementById(
+            'fluxoValorUnitario'
+          )
+          .value,
+
+      ano2:
+        document
+          .getElementById(
+            'fluxoAno2'
+          )
+          .value,
+
+      ano3:
+        document
+          .getElementById(
+            'fluxoAno3'
+          )
+          .value,
+
+      ano4:
+        document
+          .getElementById(
+            'fluxoAno4'
+          )
+          .value,
+
+      ano5:
+        document
+          .getElementById(
+            'fluxoAno5'
+          )
+          .value,
+
+      ano6:
+        document
+          .getElementById(
+            'fluxoAno6'
+          )
+          .value,
+
+      ano7:
+        document
+          .getElementById(
+            'fluxoAno7'
+          )
+          .value
+    };
+
+
+    botao.disabled =
+      true;
+
+
+    mensagem.className =
+      'message loading';
+
+
+    mensagem.textContent =
+      'Salvando item...';
+
+
+    google.script.run
+
+      .withSuccessHandler(
+        dadosAtualizados => {
+
+          botao.disabled =
+            false;
+
+
+          marcarFormularioSalvo();
+
+
+          renderizarFluxoCompleto(
+            dadosAtualizados
+          );
+
+
+          mensagem.className =
+            'message sucesso';
+
+
+          mensagem.textContent =
+            'Item salvo com sucesso.';
+        }
+      )
+
+      .withFailureHandler(
+        erro => {
+
+          botao.disabled =
+            false;
+
+
+          mensagem.className =
+            'message erro';
+
+
+          mensagem.textContent =
+            erro.message ||
+            String(erro);
+        }
+      )
+
+      .salvarItemFluxoCaixa(
+        dados
+      );
+  }
+
+
+  function renderizarItensFluxo(
+    dados
+  ) {
+
+    renderizarGrupoFluxo_(
+      'RECEITA',
+      'listaFluxoReceitas'
+    );
+
+
+    renderizarGrupoFluxo_(
+      'CUSTO_VARIAVEL',
+      'listaFluxoCustosVariaveis'
+    );
+
+
+    renderizarGrupoFluxo_(
+      'CUSTO_FIXO',
+      'listaFluxoCustosFixos'
+    );
+
+
+    document
+      .getElementById(
+        'fluxoTotalReceitasPeriodo'
+      )
+      .textContent =
+        formatarMoedaBR(
+          dados.resumo
+            .totais.receitas
+        );
+
+
+    document
+      .getElementById(
+        'fluxoTotalCustosVariaveisPeriodo'
+      )
+      .textContent =
+        formatarMoedaBR(
+          dados.resumo
+            .totais
+            .custosVariaveis
+        );
+
+
+    document
+      .getElementById(
+        'fluxoTotalCustosFixosPeriodo'
+      )
+      .textContent =
+        formatarMoedaBR(
+          dados.resumo
+            .totais
+            .custosFixos
+        );
+  }
+
+
+  function renderizarGrupoFluxo_(
+    tipo,
+    containerId
+  ) {
+
+    const container =
+      document.getElementById(
+        containerId
+      );
+
+
+    const itens =
+      fluxoAtual.itens
+        .filter(
+          item =>
+            item.tipo ===
+            tipo
+        );
+
+
+    if (!itens.length) {
+
+      container.innerHTML = `
+
+        <div class="empty">
+          Nenhum item informado.
+        </div>
+
+      `;
+
+      return;
+    }
+
+
+    const linhas =
+      itens
+        .map(
+          item => `
+
+            <tr>
+
+              <td>
+                <strong>
+                  ${escaparHtml(
+                    item.descricao
+                  )}
+                </strong>
+              </td>
+
+              <td>
+                ${escaparHtml(
+                  item.unidade
+                )}
+              </td>
+
+              <td class="numero">
+                ${escaparHtml(
+                  formatarNumeroEditavel(
+                    item.quantidade
+                  )
+                )}
+              </td>
+
+              <td class="numero">
+                ${escaparHtml(
+                  formatarMoedaBR(
+                    item.valorUnitario
+                  )
+                )}
+              </td>
+
+              ${
+                item.anos
+                  .map(
+                    valor => `
+                      <td class="numero">
+                        ${escaparHtml(
+                          formatarMoedaBR(
+                            valor
+                          )
+                        )}
+                      </td>
+                    `
+                  )
+                  .join('')
+              }
+
+              <td class="numero">
+                <strong>
+                  ${escaparHtml(
+                    formatarMoedaBR(
+                      item.totalPeriodo
+                    )
+                  )}
+                </strong>
+              </td>
+
+              <td class="acoes-tabela">
+
+                <button
+                  type="button"
+                  class="action-link"
+                  onclick="editarItemFluxo('${escaparAtributo(item.id)}')"
+                >
+                  Editar
+                </button>
+
+                <button
+                  type="button"
+                  class="action-link danger"
+                  onclick="excluirItemFluxoUI('${escaparAtributo(item.id)}')"
+                >
+                  Excluir
+                </button>
+
+              </td>
+
+            </tr>
+
+          `
+        )
+        .join('');
+
+
+    container.innerHTML = `
+
+      <div class="table-wrapper">
+
+        <table class="fluxo-tabela">
+
+          <thead>
+
+            <tr>
+
+              <th>Descrição</th>
+              <th>Un.</th>
+              <th>Qtd.</th>
+              <th>Valor unit.</th>
+              <th>Ano 1</th>
+              <th>Ano 2</th>
+              <th>Ano 3</th>
+              <th>Ano 4</th>
+              <th>Ano 5</th>
+              <th>Ano 6</th>
+              <th>Ano 7</th>
+              <th>Total</th>
+              <th>Ações</th>
+
+            </tr>
+
+          </thead>
+
+
+          <tbody>
+            ${linhas}
+          </tbody>
+
+        </table>
+
+      </div>
+
+    `;
+  }
+
+
+  function editarItemFluxo(
+    id
+  ) {
+
+    const item =
+      fluxoAtual
+        ?.itens
+        ?.find(
+          registro =>
+            registro.id === id
+        );
+
+
+    if (!item) {
+      return;
+    }
+
+
+    if (
+      !confirmarDescartarAlteracoes()
+    ) {
+      return;
+    }
+
+
+    document
+      .getElementById(
+        'fluxoItemId'
+      )
+      .value =
+        item.id;
+
+
+    document
+      .getElementById(
+        'fluxoTipo'
+      )
+      .value =
+        item.tipo;
+
+
+    document
+      .getElementById(
+        'fluxoDescricao'
+      )
+      .value =
+        item.descricao;
+
+
+    const unidades = {
+      kg:
+        'KG',
+
+      t:
+        'TON',
+
+      L:
+        'L',
+
+      saca:
+        'SC',
+
+      caixa:
+        'CX',
+
+      '@':
+        'ARROBA',
+
+      un:
+        'UN',
+
+      cabeça:
+        'CABECA',
+
+      ha:
+        'HA'
+    };
+
+
+    if (
+      unidades[
+        item.unidade
+      ]
+    ) {
+
+      document
+        .getElementById(
+          'fluxoUnidade'
+        )
+        .value =
+          unidades[
+            item.unidade
+          ];
+
+
+      document
+        .getElementById(
+          'fluxoUnidadeOutro'
+        )
+        .value =
+          '';
+
+    } else {
+
+      document
+        .getElementById(
+          'fluxoUnidade'
+        )
+        .value =
+          'OUTRO';
+
+
+      document
+        .getElementById(
+          'fluxoUnidadeOutro'
+        )
+        .value =
+          item.unidade;
+    }
+
+
+    atualizarUnidadeOutroFluxo();
+
+
+    document
+      .getElementById(
+        'fluxoQuantidade'
+      )
+      .value =
+        formatarNumeroEditavel(
+          item.quantidade
+        );
+
+
+    document
+      .getElementById(
+        'fluxoValorUnitario'
+      )
+      .value =
+        formatarNumeroEditavel(
+          item.valorUnitario
+        );
+
+
+    document
+      .getElementById(
+        'fluxoAno1'
+      )
+      .value =
+        formatarMoedaBR(
+          item.anos[0]
+        );
+
+
+    for (
+      let ano = 2;
+      ano <= 7;
+      ano++
+    ) {
+
+      document
+        .getElementById(
+          `fluxoAno${ano}`
+        )
+        .value =
+          formatarNumeroEditavel(
+            item.anos[
+              ano - 1
+            ]
+          );
+    }
+
+
+    document
+      .getElementById(
+        'tituloFormFluxoItem'
+      )
+      .textContent =
+        'Editar item do fluxo de caixa';
+
+
+    document
+      .getElementById(
+        'btnSalvarItemFluxo'
+      )
+      .textContent =
+        'Salvar alterações';
+
+
+    document
+      .getElementById(
+        'btnCancelarItemFluxo'
+      )
+      .hidden =
+        false;
+
+
+    marcarFormularioSalvo();
+
+
+    document
+      .getElementById(
+        'formFluxoCaixaItem'
+      )
+      .scrollIntoView({
+        behavior:
+          'smooth',
+
+        block:
+          'center'
+      });
+  }
+
+
+  function cancelarEdicaoItemFluxo(
+    confirmar = true
+  ) {
+
+    if (
+      confirmar &&
+      !confirmarDescartarAlteracoes()
+    ) {
+      return;
+    }
+
+
+    document
+      .getElementById(
+        'formFluxoCaixaItem'
+      )
+      .reset();
+
+
+    document
+      .getElementById(
+        'fluxoItemId'
+      )
+      .value =
+        '';
+
+
+    document
+      .getElementById(
+        'fluxoAno1'
+      )
+      .value =
+        'R$ 0,00';
+
+
+    for (
+      let ano = 2;
+      ano <= 7;
+      ano++
+    ) {
+
+      document
+        .getElementById(
+          `fluxoAno${ano}`
+        )
+        .value =
+          '0,00';
+    }
+
+
+    document
+      .getElementById(
+        'campoFluxoUnidadeOutro'
+      )
+      .hidden =
+        true;
+
+
+    document
+      .getElementById(
+        'tituloFormFluxoItem'
+      )
+      .textContent =
+        'Adicionar item';
+
+
+    document
+      .getElementById(
+        'btnSalvarItemFluxo'
+      )
+      .textContent =
+        'Adicionar item';
+
+
+    document
+      .getElementById(
+        'btnSalvarItemFluxo'
+      )
+      .disabled =
+        false;
+
+
+    document
+      .getElementById(
+        'btnCancelarItemFluxo'
+      )
+      .hidden =
+        true;
+
+
+    document
+      .getElementById(
+        'mensagemItemFluxo'
+      )
+      .textContent =
+        '';
+
+
+    marcarFormularioSalvo();
+  }
+
+
+  function excluirItemFluxoUI(
+    id
+  ) {
+
+    if (
+      !window.confirm(
+        'Deseja realmente excluir este item do fluxo de caixa?'
+      )
+    ) {
+      return;
+    }
+
+
+    google.script.run
+
+      .withSuccessHandler(
+        dados => {
+
+          marcarFormularioSalvo();
+
+
+          renderizarFluxoCompleto(
+            dados
+          );
+        }
+      )
+
+      .withFailureHandler(
+        erro => {
+
+          alert(
+            erro.message ||
+            String(erro)
+          );
+        }
+      )
+
+      .excluirItemFluxoCaixa(
+        fluxoProcessoId,
+        id
+      );
+  }
+
+
+  function renderizarResumoFluxo(
+    dados
+  ) {
+
+    const resumo =
+      dados.resumo;
+
+
+    function linha_(
+      titulo,
+      valores,
+      classe = ''
+    ) {
+
+      return `
+
+        <tr class="${classe}">
+
+          <td>
+            <strong>
+              ${escaparHtml(titulo)}
+            </strong>
+          </td>
+
+          ${
+            valores
+              .map(
+                valor => `
+                  <td class="numero">
+                    ${escaparHtml(
+                      formatarMoedaBR(
+                        valor
+                      )
+                    )}
+                  </td>
+                `
+              )
+              .join('')
+          }
+
+        </tr>
+
+      `;
+    }
+
+
+    document
+      .getElementById(
+        'resumoFluxoCaixa'
+      )
+      .innerHTML = `
+
+        <table class="fluxo-resumo-tabela">
+
+          <thead>
+
+            <tr>
+
+              <th>
+                Indicador
+              </th>
+
+              <th>Ano 1</th>
+              <th>Ano 2</th>
+              <th>Ano 3</th>
+              <th>Ano 4</th>
+              <th>Ano 5</th>
+              <th>Ano 6</th>
+              <th>Ano 7</th>
+
+            </tr>
+
+          </thead>
+
+
+          <tbody>
+
+            ${linha_(
+              'Receitas',
+              resumo.receitas,
+              'fluxo-linha-receita'
+            )}
+
+            ${linha_(
+              'Custos variáveis',
+              resumo.custosVariaveis
+            )}
+
+            ${linha_(
+              'Custos fixos',
+              resumo.custosFixos
+            )}
+
+            ${linha_(
+              'Despesas totais',
+              resumo.despesas,
+              'fluxo-linha-total'
+            )}
+
+            ${linha_(
+              'Resultado operacional',
+              resumo.resultado,
+              'fluxo-linha-resultado'
+            )}
+
+            ${linha_(
+              'Resultado acumulado',
+              resumo.acumulado,
+              'fluxo-linha-acumulado'
+            )}
+
+          </tbody>
+
+        </table>
+
+      `;
+
+
+    const resultadoFinal =
+      resumo.totais
+        .resultadoAcumuladoFinal;
+
+
+    const container =
+      document.getElementById(
+        'fluxoResultadoFinal'
+      );
+
+
+    container.className =
+      'fluxo-resultado-final ' +
+      (
+        resultadoFinal >= 0
+          ? 'positivo'
+          : 'negativo'
+      );
+
+
+    container.innerHTML = `
+
+      <span>
+        Resultado acumulado ao final do Ano 7
+      </span>
+
+      <strong>
+        ${formatarMoedaBR(
+          resultadoFinal
+        )}
+      </strong>
+
+    `;
+  }
+
+
+  function existeItemFluxoEmEdicao() {
+
+    return Boolean(
+      document
+        .getElementById(
+          'fluxoItemId'
+        )
+        .value ||
+
+      document
+        .getElementById(
+          'fluxoDescricao'
+        )
+        .value
+        .trim()
+    );
+  }
+
+
+  function salvarRascunhoFluxoUI(
+    callback
+  ) {
+
+    const mensagem =
+      document.getElementById(
+        'mensagemFluxo'
+      );
+
+
+    if (
+      existeItemFluxoEmEdicao()
+    ) {
+
+      mensagem.className =
+        'message erro';
+
+
+      mensagem.textContent =
+        'Salve ou cancele o item em edição antes de salvar o rascunho.';
+
+
+      return;
+    }
+
+
+    mensagem.className =
+      'message loading';
+
+
+    mensagem.textContent =
+      'Salvando rascunho...';
+
+
+    google.script.run
+
+      .withSuccessHandler(
+        dados => {
+
+          marcarFormularioSalvo();
+
+
+          renderizarFluxoCompleto(
+            dados
+          );
+
+
+          mensagem.className =
+            'message sucesso';
+
+
+          mensagem.textContent =
+            'Rascunho salvo com sucesso.';
+
+
+          if (
+            typeof callback ===
+            'function'
+          ) {
+            callback(
+              dados
+            );
+          }
+        }
+      )
+
+      .withFailureHandler(
+        erro => {
+
+          mensagem.className =
+            'message erro';
+
+
+          mensagem.textContent =
+            erro.message ||
+            String(erro);
+        }
+      )
+
+      .salvarRascunhoFluxoCaixa(
+        fluxoProcessoId,
+
+        document
+          .getElementById(
+            'fluxoProjecaoConfirmada'
+          )
+          .checked
+      );
+  }
+
+
+  function concluirFluxoUI() {
+
+    const mensagem =
+      document.getElementById(
+        'mensagemFluxo'
+      );
+
+
+    if (
+      existeItemFluxoEmEdicao()
+    ) {
+
+      mensagem.className =
+        'message erro';
+
+
+      mensagem.textContent =
+        'Salve ou cancele o item em edição antes de concluir o fluxo de caixa.';
+
+
+      return;
+    }
+
+
+    salvarRascunhoFluxoUI(
+      () => {
+
+        mensagem.className =
+          'message loading';
+
+
+        mensagem.textContent =
+          'Validando fluxo de caixa...';
+
+
+        google.script.run
+
+          .withSuccessHandler(
+            dados => {
+
+              marcarFormularioSalvo();
+
+
+              renderizarFluxoCompleto(
+                dados
+              );
+
+
+              mensagem.className =
+                'message sucesso';
+
+
+              mensagem.textContent =
+                'Fluxo de caixa concluído com sucesso.';
+            }
+          )
+
+          .withFailureHandler(
+            erro => {
+
+              mensagem.className =
+                'message erro';
+
+
+              mensagem.textContent =
+                erro.message ||
+                String(erro);
+            }
+          )
+
+          .concluirFluxoCaixa(
+            fluxoProcessoId
+          );
+      }
+    );
+  }
+
+</script>

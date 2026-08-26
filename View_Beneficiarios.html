@@ -1,0 +1,503 @@
+<section
+  id="pagina-beneficiarios"
+  class="pagina"
+>
+
+  <div class="page-header">
+
+    <h2>
+      Beneficiários
+    </h2>
+
+    <p>
+      Cadastro completo dos proponentes.
+    </p>
+
+  </div>
+
+
+  <div
+    id="cardFormularioBeneficiario"
+    class="card"
+  >
+
+    <h3 id="tituloFormularioBeneficiario">
+      Novo beneficiário
+    </h3>
+
+
+    <div class="required-legend">
+      <span class="obrigatorio">*</span>
+      Campo necessário para concluir o cadastro.
+      O registro pode ser salvo incompleto.
+    </div>
+
+
+    <div
+      id="resumoPendenciasBeneficiario"
+      class="pendencias-card"
+      hidden
+    ></div>
+
+
+    <form id="formBeneficiario">
+
+      <input
+        type="hidden"
+        id="beneficiarioId"
+      >
+
+
+      <div class="section-title">
+        Identificação
+      </div>
+
+
+      <div class="form-grid">
+
+        <div class="span-2">
+
+          <label for="nome">
+            Nome
+            <span class="obrigatorio">*</span>
+          </label>
+
+          <input
+            id="nome"
+            required
+          >
+
+        </div>
+
+
+        <div>
+
+          <label for="apelido">
+            Apelido
+          </label>
+
+          <input id="apelido">
+
+        </div>
+
+
+        <div>
+
+          <label for="cpf">
+            CPF
+            <span class="obrigatorio">*</span>
+          </label>
+
+          <input
+            id="cpf"
+            maxlength="14"
+            inputmode="numeric"
+            required
+          >
+
+        </div>
+
+
+        <div>
+
+          <label for="rg">
+            RG
+            <span class="obrigatorio">*</span>
+          </label>
+
+          <input id="rg">
+
+        </div>
+
+
+        <div>
+
+          <label for="telefone">
+            Telefone
+            <span class="obrigatorio">*</span>
+          </label>
+
+          <input
+            id="telefone"
+            maxlength="15"
+            inputmode="tel"
+          >
+
+        </div>
+
+
+        <div>
+
+          <label for="dataNascimento">
+            Data de nascimento
+            <span class="obrigatorio">*</span>
+          </label>
+
+          <input
+            id="dataNascimento"
+            type="date"
+          >
+
+        </div>
+
+
+        <div>
+
+          <label for="nacionalidade">
+            Nacionalidade
+            <span class="obrigatorio">*</span>
+          </label>
+
+          <input
+            id="nacionalidade"
+            value="BRASILEIRA"
+          >
+
+        </div>
+
+
+        <div>
+
+          <label for="naturalidade">
+            Naturalidade
+            <span class="obrigatorio">*</span>
+          </label>
+
+          <input id="naturalidade">
+
+        </div>
+
+
+        <div>
+
+          <label for="estadoCivil">
+            Estado civil
+            <span class="obrigatorio">*</span>
+          </label>
+
+          <select id="estadoCivil">
+
+            <option value="">
+              Selecione...
+            </option>
+
+            <option value="SOLTEIRO">
+              Solteiro(a)
+            </option>
+
+            <option value="CASADO">
+              Casado(a)
+            </option>
+
+            <option value="UNIAO_ESTAVEL">
+              União estável
+            </option>
+
+            <option value="DIVORCIADO">
+              Divorciado(a)
+            </option>
+
+            <option value="SEPARADO">
+              Separado(a)
+            </option>
+
+            <option value="VIUVO">
+              Viúvo(a)
+            </option>
+
+          </select>
+
+        </div>
+
+
+        <div>
+
+          <label for="profissao">
+            Profissão
+            <span class="obrigatorio">*</span>
+          </label>
+
+          <input id="profissao">
+
+        </div>
+
+
+        <div>
+
+          <label for="escolaridade">
+            Escolaridade
+            <span class="obrigatorio">*</span>
+          </label>
+
+          <select id="escolaridade">
+
+            <option value="">
+              Selecione...
+            </option>
+
+            <option value="NAO_ALFABETIZADO">
+              Não alfabetizado
+            </option>
+
+            <option value="ALFABETIZADO">
+              Alfabetizado
+            </option>
+
+            <option value="FUNDAMENTAL_INCOMPLETO">
+              Ensino fundamental incompleto
+            </option>
+
+            <option value="FUNDAMENTAL_COMPLETO">
+              Ensino fundamental completo
+            </option>
+
+            <option value="MEDIO_INCOMPLETO">
+              Ensino médio incompleto
+            </option>
+
+            <option value="MEDIO_COMPLETO">
+              Ensino médio completo
+            </option>
+
+            <option value="TECNICO">
+              Ensino técnico
+            </option>
+
+            <option value="SUPERIOR_INCOMPLETO">
+              Ensino superior incompleto
+            </option>
+
+            <option value="SUPERIOR_COMPLETO">
+              Ensino superior completo
+            </option>
+
+            <option value="POS_GRADUACAO">
+              Pós-graduação
+            </option>
+
+          </select>
+
+        </div>
+
+
+        <div>
+
+          <label for="dependentes">
+            Nº de dependentes
+            <span class="obrigatorio">*</span>
+          </label>
+
+          <input
+            id="dependentes"
+            type="number"
+            min="0"
+            step="1"
+          >
+
+        </div>
+
+
+        <div class="span-2">
+
+          <label for="enderecoBeneficiario">
+            Endereço
+            <span class="obrigatorio">*</span>
+          </label>
+
+          <input id="enderecoBeneficiario">
+
+        </div>
+
+      </div>
+
+
+      <div
+        id="blocoConjuge"
+        class="bloco-condicional"
+        hidden
+      >
+
+        <div class="section-title">
+          Cônjuge / Companheiro(a)
+        </div>
+
+
+        <div class="form-grid">
+
+          <div class="span-2">
+
+            <label for="conjugeNome">
+              Nome
+              <span class="obrigatorio">*</span>
+            </label>
+
+            <input id="conjugeNome">
+
+          </div>
+
+
+          <div>
+
+            <label for="conjugeRg">
+              RG
+              <span class="obrigatorio">*</span>
+            </label>
+
+            <input id="conjugeRg">
+
+          </div>
+
+
+          <div>
+
+            <label for="conjugeCpf">
+              CPF
+              <span class="obrigatorio">*</span>
+            </label>
+
+            <input
+              id="conjugeCpf"
+              maxlength="14"
+              inputmode="numeric"
+            >
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <div class="section-title">
+        Referências pessoais
+      </div>
+
+
+      <div class="form-grid">
+
+        <div>
+
+          <label for="referencia1Nome">
+            Referência pessoal 1
+          </label>
+
+          <input
+            id="referencia1Nome"
+            placeholder="Nome"
+          >
+
+        </div>
+
+
+        <div>
+
+          <label for="referencia1Telefone">
+            Telefone
+          </label>
+
+          <input
+            id="referencia1Telefone"
+            maxlength="15"
+            inputmode="tel"
+          >
+
+        </div>
+
+
+        <div></div>
+
+
+        <div>
+
+          <label for="referencia2Nome">
+            Referência pessoal 2
+          </label>
+
+          <input
+            id="referencia2Nome"
+            placeholder="Nome"
+          >
+
+        </div>
+
+
+        <div>
+
+          <label for="referencia2Telefone">
+            Telefone
+          </label>
+
+          <input
+            id="referencia2Telefone"
+            maxlength="15"
+            inputmode="tel"
+          >
+
+        </div>
+
+      </div>
+
+
+      <div class="actions">
+
+        <button
+          id="btnSalvarBeneficiario"
+          class="primary"
+          type="submit"
+        >
+          Cadastrar
+        </button>
+
+
+        <button
+          id="btnCancelarEdicaoBeneficiario"
+          class="secondary"
+          type="button"
+          style="display:none;"
+          onclick="novoBeneficiario()"
+        >
+          Cancelar edição
+        </button>
+
+      </div>
+
+
+      <div
+        id="mensagemBeneficiario"
+        class="message"
+      ></div>
+
+    </form>
+
+  </div>
+
+
+  <div class="card">
+
+    <h3>
+      Beneficiários cadastrados
+    </h3>
+
+
+    <div class="search-box">
+
+      <label for="buscaBeneficiarios">
+        Pesquisar
+      </label>
+
+      <input
+        id="buscaBeneficiarios"
+        type="search"
+        placeholder="Nome, CPF, RG ou telefone..."
+      >
+
+    </div>
+
+
+    <div id="listaBeneficiarios">
+      Carregando...
+    </div>
+
+  </div>
+
+</section>
