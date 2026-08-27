@@ -1,4 +1,4 @@
-import { Router, Request, Response } from "express";
+import { Router, Request, NextFunction } from "express";
 import { AuthService } from "./services/auth.service";
 import { BeneficiaryService } from "./services/beneficiary.service";
 import { PropertyService } from "./services/property.service";
@@ -9,13 +9,46 @@ import { CashFlowService } from "./services/cashflow.service";
 import { FinancingService } from "./services/financing.service";
 import { DocumentService } from "./services/document.service";
 import { AuditService, CreditLineService, RemoteConfigService } from "./services/creditline.service";
-import { beneficiarySchema, creditLineSchema, financingScenarioSchema, propertySchema, proposalSchema } from "../domain/validation";
+import { beneficiarySchema, cashFlowItemSchema, creditLineSchema, financingScenarioSchema, guaranteeSchema, identificationSchema, patrimonyDebtSchema, patrimonyItemSchema, propertySchema, proposalSchema } from "../domain/validation";
+import { User, UserRole } from "../domain/types";
 
 export const apiRouter = Router();
 
 // Middleware to resolve user
-function getUser(req: Request) {
-  return AuthService.getCurrentUser(req.headers as any);
+type AuthenticatedRequest = Request & { currentUser?: User };
+
+function getUser(req: Request): User {
+  const authenticatedRequest = req as AuthenticatedRequest;
+  if (authenticatedRequest.currentUser) return authenticatedRequest.currentUser;
+  throw new Error("Usuário não autenticado");
+}
+
+async function requireAuthentication(req: Request, res: any, next: NextFunction): Promise<void> {
+  try {
+    const user = await AuthService.getCurrentUser(
+      req.headers as Record<string, string | string[] | undefined>
+    );
+    if (user.status !== "ACTIVE" || !user.role) {
+      res.status(403).json({ error: "Usuário aguardando aprovação de acesso" });
+      return;
+    }
+    if (user.role === "CONSULTA" && !["GET", "HEAD", "OPTIONS"].includes(req.method)) {
+      res.status(403).json({ error: "Usuários de consulta não podem alterar dados" });
+      return;
+    }
+    (req as AuthenticatedRequest).currentUser = user;
+    next();
+  } catch (err: any) {
+    res.status(401).json({ error: err.message });
+  }
+}
+
+function requireRoles(req: Request, roles: Exclude<UserRole, null>[]): User {
+  const actor = getUser(req);
+  if (!actor.role || !roles.includes(actor.role)) {
+    throw new Error("Usuário não possui permissão para esta operação");
+  }
+  return actor;
 }
 
 // Health check
@@ -23,30 +56,66 @@ apiRouter.get("/health", (req, res) => {
   res.json({ status: "ok", app: "FUNDERR", version: "0.10.2", timestamp: new Date().toISOString() });
 });
 
-// Auth & Users
-apiRouter.get("/auth/me", (req, res) => {
+// Authentication setup and session endpoints
+apiRouter.get("/auth/status", (_req, res) => {
+  res.json(AuthService.getSetupStatus());
+});
+
+apiRouter.post("/auth/bootstrap", async (req, res) => {
   try {
-    const user = getUser(req);
-    res.json({ user });
+    const user = await AuthService.bootstrapAdmin(
+      req.headers as Record<string, string | string[] | undefined>,
+      req.body.name
+    );
+    res.status(201).json({ user });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(400).json({ error: err.message });
   }
 });
+
+apiRouter.post("/auth/logout", (_req, res) => {
+  res.status(204).end();
+});
+
+apiRouter.get("/auth/me", async (req, res) => {
+  try {
+    const user = await AuthService.getCurrentUser(
+      req.headers as Record<string, string | string[] | undefined>,
+      !AuthService.getSetupStatus().setupRequired
+    );
+    res.json({ user });
+  } catch (err: any) {
+    res.status(401).json({ error: err.message });
+  }
+});
+
+apiRouter.use(requireAuthentication);
 
 apiRouter.get("/users", (req, res) => {
   try {
+    requireRoles(req, ["ADMIN"]);
     const users = AuthService.listUsers();
     res.json({ users });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(403).json({ error: err.message });
   }
 });
 
-apiRouter.patch("/users/:id/role", (req, res) => {
+apiRouter.post("/users", async (req, res) => {
   try {
-    const actor = getUser(req);
+    const actor = requireRoles(req, ["ADMIN"]);
+    const user = await AuthService.createUser(req.body, actor);
+    res.status(201).json({ user });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+apiRouter.patch("/users/:id/role", async (req, res) => {
+  try {
+    const actor = requireRoles(req, ["ADMIN"]);
     const { role, status } = req.body;
-    const user = AuthService.updateUserRole(req.params.id, role, status, actor);
+    const user = await AuthService.updateUserRole(req.params.id, role, status, actor);
     res.json({ user });
   } catch (err: any) {
     res.status(400).json({ error: err.message });
@@ -80,7 +149,7 @@ apiRouter.post("/beneficiaries", (req, res) => {
     if (!parsed.success) {
       return res.status(400).json({ error: parsed.error.issues[0]?.message || "Dados inválidos" });
     }
-    const b = BeneficiaryService.createOrUpdate(req.body, actor);
+    const b = BeneficiaryService.createOrUpdate(parsed.data, actor);
     res.json({ beneficiary: b });
   } catch (err: any) {
     res.status(400).json({ error: err.message });
@@ -114,7 +183,7 @@ apiRouter.post("/properties", (req, res) => {
     if (!parsed.success) {
       return res.status(400).json({ error: parsed.error.issues[0]?.message || "Dados inválidos" });
     }
-    const p = PropertyService.createOrUpdate(req.body, actor);
+    const p = PropertyService.createOrUpdate(parsed.data, actor);
     res.json({ property: p });
   } catch (err: any) {
     res.status(400).json({ error: err.message });
@@ -165,6 +234,21 @@ apiRouter.patch("/proposals/:id", (req, res) => {
   }
 });
 
+apiRouter.post("/proposals/:id/status", (req, res) => {
+  try {
+    const actor = getUser(req);
+    const proposal = ProposalService.changeStatus(
+      req.params.id,
+      req.body.status,
+      String(req.body.reason || ""),
+      actor
+    );
+    res.json(proposal);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 // Patrimônio
 apiRouter.get("/proposals/:id/patrimony", (req, res) => {
   try {
@@ -178,7 +262,9 @@ apiRouter.get("/proposals/:id/patrimony", (req, res) => {
 apiRouter.post("/proposals/:id/patrimony/items", (req, res) => {
   try {
     const actor = getUser(req);
-    const data = PatrimonyService.addItem(req.params.id, req.body, actor);
+    const parsed = patrimonyItemSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message || "Item patrimonial inválido" });
+    const data = PatrimonyService.addItem(req.params.id, parsed.data, actor);
     res.json(data);
   } catch (err: any) {
     res.status(400).json({ error: err.message });
@@ -198,7 +284,9 @@ apiRouter.delete("/proposals/:id/patrimony/items/:itemId", (req, res) => {
 apiRouter.post("/proposals/:id/patrimony/debts", (req, res) => {
   try {
     const actor = getUser(req);
-    const data = PatrimonyService.addDebt(req.params.id, req.body, actor);
+    const parsed = patrimonyDebtSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message || "Dívida inválida" });
+    const data = PatrimonyService.addDebt(req.params.id, parsed.data, actor);
     res.json(data);
   } catch (err: any) {
     res.status(400).json({ error: err.message });
@@ -225,6 +313,19 @@ apiRouter.post("/proposals/:id/patrimony/complete", (req, res) => {
   }
 });
 
+apiRouter.post("/proposals/:id/patrimony/debts-confirmation", (req, res) => {
+  try {
+    const actor = getUser(req);
+    if (typeof req.body.confirmed !== "boolean") {
+      return res.status(400).json({ error: "A confirmação deve ser verdadeira ou falsa" });
+    }
+    const data = PatrimonyService.confirmDebts(req.params.id, req.body.confirmed, actor);
+    res.json(data);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 // Identificação
 apiRouter.get("/proposals/:id/identification", (req, res) => {
   try {
@@ -238,7 +339,11 @@ apiRouter.get("/proposals/:id/identification", (req, res) => {
 apiRouter.post("/proposals/:id/identification", (req, res) => {
   try {
     const actor = getUser(req);
-    const data = IdentificationService.save(req.params.id, req.body, actor);
+    const parsed = identificationSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.issues[0]?.message || "Dados de identificação inválidos" });
+    }
+    const data = IdentificationService.save(req.params.id, parsed.data, actor);
     res.json(data);
   } catch (err: any) {
     res.status(400).json({ error: err.message });
@@ -268,7 +373,24 @@ apiRouter.get("/proposals/:id/cashflow", (req, res) => {
 apiRouter.post("/proposals/:id/cashflow/items", (req, res) => {
   try {
     const actor = getUser(req);
-    const data = CashFlowService.addItem(req.params.id, req.body, actor);
+    const parsed = cashFlowItemSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.issues[0]?.message || "Item do fluxo inválido" });
+    }
+    const data = CashFlowService.addItem(req.params.id, parsed.data, actor);
+    res.json(data);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+apiRouter.post("/proposals/:id/cashflow/confirmation", (req, res) => {
+  try {
+    const actor = getUser(req);
+    if (typeof req.body.confirmed !== "boolean") {
+      return res.status(400).json({ error: "A confirmação deve ser verdadeira ou falsa" });
+    }
+    const data = CashFlowService.confirmProjection(req.params.id, req.body.confirmed, actor);
     res.json(data);
   } catch (err: any) {
     res.status(400).json({ error: err.message });
@@ -308,7 +430,11 @@ apiRouter.get("/proposals/:id/financing", (req, res) => {
 apiRouter.post("/proposals/:id/financing", (req, res) => {
   try {
     const actor = getUser(req);
-    const data = FinancingService.save(req.params.id, req.body, actor);
+    const parsed = financingScenarioSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.issues[0]?.message || "Cenário de financiamento inválido" });
+    }
+    const data = FinancingService.save(req.params.id, parsed.data, actor);
     res.json(data);
   } catch (err: any) {
     res.status(400).json({ error: err.message });
@@ -318,8 +444,32 @@ apiRouter.post("/proposals/:id/financing", (req, res) => {
 apiRouter.post("/proposals/:id/financing/guarantees", (req, res) => {
   try {
     const actor = getUser(req);
-    const data = FinancingService.addGuarantee(req.params.id, req.body, actor);
+    const parsed = guaranteeSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.issues[0]?.message || "Garantia inválida" });
+    }
+    const data = FinancingService.addGuarantee(req.params.id, parsed.data, actor);
     res.json(data);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+apiRouter.post("/proposals/:id/financing/guarantees-confirmation", (req, res) => {
+  try {
+    const actor = getUser(req);
+    if (typeof req.body.confirmed !== "boolean") return res.status(400).json({ error: "Confirmação inválida" });
+    res.json(FinancingService.confirmGuarantees(req.params.id, req.body.confirmed, actor));
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+apiRouter.post("/proposals/:id/financing/schedule-confirmation", (req, res) => {
+  try {
+    const actor = getUser(req);
+    if (typeof req.body.confirmed !== "boolean") return res.status(400).json({ error: "Confirmação inválida" });
+    res.json(FinancingService.confirmSchedule(req.params.id, req.body.confirmed, actor));
   } catch (err: any) {
     res.status(400).json({ error: err.message });
   }

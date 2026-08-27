@@ -68,13 +68,13 @@ export function validateCoordinates(
   lat?: number | null,
   lng?: number | null
 ): { valid: boolean; error?: string } {
-  if (lat === null || lat === undefined || lat === 0) {
-    if (lng === null || lng === undefined || lng === 0) {
+  if (lat === null || lat === undefined) {
+    if (lng === null || lng === undefined) {
       return { valid: true }; // optional empty
     }
     return { valid: false, error: "Latitude e Longitude devem ser preenchidas em conjunto" };
   }
-  if (lng === null || lng === undefined || lng === 0) {
+  if (lng === null || lng === undefined) {
     return { valid: false, error: "Latitude e Longitude devem ser preenchidas em conjunto" };
   }
   if (lat < -90 || lat > 90) {
@@ -97,35 +97,44 @@ export function calculateBeneficiaryCompleteness(b: Partial<Beneficiary>): {
   percent: number;
   pendencias: string[];
 } {
-  const pendencias: string[] = [];
-  if (!b.nome?.trim()) pendencias.push("Nome do beneficiário não informado");
-  if (!b.cpf || !validateCPF(b.cpf)) pendencias.push("CPF inválido ou não informado");
-  if (!b.telefone?.trim()) pendencias.push("Telefone não informado");
-  if (!b.estadoCivil) pendencias.push("Estado civil não informado");
-  if (
-    (b.estadoCivil === "CASADO" || b.estadoCivil === "UNIAO_ESTAVEL") &&
-    !b.conjugeNome?.trim()
-  ) {
-    pendencias.push("Nome do cônjuge obrigatório para estado civil casado/união estável");
-  }
-  if (
-    (b.estadoCivil === "CASADO" || b.estadoCivil === "UNIAO_ESTAVEL") &&
-    b.conjugeCpf &&
-    !validateCPF(b.conjugeCpf)
-  ) {
-    pendencias.push("CPF do cônjuge inválido");
-  }
-  if (
-    (b.estadoCivil === "CASADO" || b.estadoCivil === "UNIAO_ESTAVEL") &&
-    b.conjugeCpf &&
-    b.cpf &&
-    b.conjugeCpf.replace(/\D/g, "") === b.cpf.replace(/\D/g, "")
-  ) {
-    pendencias.push("CPF do cônjuge não pode ser igual ao do titular");
+  const checks: { valid: boolean; message: string }[] = [
+    { valid: Boolean(b.nome?.trim()), message: "Nome do beneficiário não informado" },
+    { valid: Boolean(b.cpf && validateCPF(b.cpf)), message: "CPF inválido ou não informado" },
+    { valid: Boolean(b.rg?.trim()), message: "RG não informado" },
+    { valid: Boolean(b.telefone?.trim()), message: "Telefone não informado" },
+    { valid: Boolean(b.endereco?.trim()), message: "Endereço não informado" },
+    { valid: Boolean(b.nacionalidade?.trim()), message: "Nacionalidade não informada" },
+    { valid: Boolean(b.naturalidade?.trim()), message: "Naturalidade não informada" },
+    { valid: Boolean(b.dataNascimento), message: "Data de nascimento não informada" },
+    { valid: Boolean(b.estadoCivil), message: "Estado civil não informado" },
+    { valid: Boolean(b.escolaridade), message: "Escolaridade não informada" },
+    { valid: Boolean(b.profissao?.trim()), message: "Profissão não informada" },
+    { valid: b.dependentes !== undefined && b.dependentes >= 0, message: "Número de dependentes não informado" },
+    {
+      valid: Boolean(b.references?.some((reference) => reference.nome?.trim() && reference.telefone?.trim())),
+      message: "Ao menos uma referência com nome e telefone deve ser informada",
+    },
+  ];
+
+  const hasSpouse = b.estadoCivil === "CASADO" || b.estadoCivil === "UNIAO_ESTAVEL";
+  if (hasSpouse) {
+    checks.push(
+      { valid: Boolean(b.conjugeNome?.trim()), message: "Nome do cônjuge não informado" },
+      { valid: Boolean(b.conjugeRg?.trim()), message: "RG do cônjuge não informado" },
+      {
+        valid: Boolean(
+          b.conjugeCpf &&
+            validateCPF(b.conjugeCpf) &&
+            (!b.cpf || b.conjugeCpf.replace(/\D/g, "") !== b.cpf.replace(/\D/g, ""))
+        ),
+        message: "CPF do cônjuge inválido, ausente ou igual ao CPF do titular",
+      }
+    );
   }
 
-  const totalChecks = 6;
-  const passed = totalChecks - pendencias.length;
+  const pendencias = checks.filter((check) => !check.valid).map((check) => check.message);
+  const totalChecks = checks.length;
+  const passed = checks.filter((check) => check.valid).length;
   const percent = Math.max(0, Math.min(100, Math.round((passed / totalChecks) * 100)));
   return { percent, pendencias };
 }
@@ -137,21 +146,33 @@ export function calculatePropertyCompleteness(p: Partial<Property>): {
   percent: number;
   pendencias: string[];
 } {
-  const pendencias: string[] = [];
-  if (!p.denominacao?.trim()) pendencias.push("Denominação do imóvel não informada");
-  if (!p.municipio || !isValidRoraimaMunicipality(p.municipio))
-    pendencias.push("Município de Roraima inválido");
-  if (!p.areaTotal || p.areaTotal <= 0) pendencias.push("Área total deve ser maior que 0");
-  if (!p.formaOcupacao?.trim()) pendencias.push("Forma de ocupação não informada");
-  if (!p.documentoExistente?.trim()) pendencias.push("Documento fundiário não informado");
+  const checks: { valid: boolean; message: string }[] = [
+    { valid: Boolean(p.denominacao?.trim()), message: "Denominação do imóvel não informada" },
+    { valid: Boolean(p.endereco?.trim()), message: "Localização ou roteiro de acesso não informado" },
+    { valid: Boolean(p.municipio && isValidRoraimaMunicipality(p.municipio)), message: "Município de Roraima inválido ou não informado" },
+    { valid: p.estado === "RR", message: "Estado da propriedade não informado" },
+    { valid: Boolean(p.areaTotal && p.areaTotal > 0), message: "Área total deve ser maior que zero" },
+    { valid: p.areaDisponivel !== undefined && p.areaDisponivel >= 0, message: "Área disponível não informada" },
+    { valid: p.areaLegal !== undefined && p.areaLegal >= 0, message: "Área legal não informada" },
+    { valid: Boolean(p.formaOcupacao?.trim()), message: "Forma de ocupação não informada" },
+    { valid: Boolean(p.tempoExploracao?.trim()), message: "Tempo de exploração não informado" },
+    { valid: Boolean(p.documentoExistente?.trim()), message: "Documento fundiário não informado" },
+    { valid: Boolean(p.confrontacaoNorte?.trim()), message: "Confrontação norte não informada" },
+    { valid: Boolean(p.confrontacaoSul?.trim()), message: "Confrontação sul não informada" },
+    { valid: Boolean(p.confrontacaoLeste?.trim()), message: "Confrontação leste não informada" },
+    { valid: Boolean(p.confrontacaoOeste?.trim()), message: "Confrontação oeste não informada" },
+    { valid: Boolean(p.administracao?.trim()), message: "Administração da propriedade não informada" },
+  ];
 
   const coordCheck = validateCoordinates(p.latitude, p.longitude);
-  if (!coordCheck.valid && coordCheck.error) {
-    pendencias.push(coordCheck.error);
-  }
+  checks.push({
+    valid: coordCheck.valid && p.latitude != null && p.longitude != null,
+    message: coordCheck.error || "Latitude e longitude não informadas",
+  });
 
-  const totalChecks = 5;
-  const passed = totalChecks - pendencias.length;
+  const pendencias = checks.filter((check) => !check.valid).map((check) => check.message);
+  const totalChecks = checks.length;
+  const passed = checks.filter((check) => check.valid).length;
   const percent = Math.max(0, Math.min(100, Math.round((passed / totalChecks) * 100)));
   return { percent, pendencias };
 }
@@ -524,4 +545,3 @@ export function formatCurrency(value?: number | null): string {
     maximumFractionDigits: 2,
   }).format(value);
 }
-

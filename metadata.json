@@ -1,6 +1,0 @@
-{
-  "name": "FUNDERR",
-  "description": "Sistema de gestão e análise de crédito rural e propostas agropecuárias (migração FUNDERR v0.10.2)",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

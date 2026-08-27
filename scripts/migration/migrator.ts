@@ -3,9 +3,9 @@
  * Idempotent migration tool from Google Sheets/JSON to Cloud SQL / Relational PostgreSQL
  *
  * Usage:
- *   npx tsx scripts/migration/migrator.ts --dry-run
- *   npx tsx scripts/migration/migrator.ts --validate
- *   npx tsx scripts/migration/migrator.ts --execute
+ *   bun scripts/migration/migrator.ts --dry-run
+ *   bun scripts/migration/migrator.ts --validate
+ *   bun scripts/migration/migrator.ts --execute
  */
 
 import fs from "fs";

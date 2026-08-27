@@ -12,8 +12,13 @@ import {
   CreditLine,
   ProposalDocument,
   DocumentType,
+  FinancingScenario,
+  Guarantee,
+  ProposalIdentification,
+  ProposalJob,
+  ProposalUseSource,
 } from "../../domain/types";
-import { formatCurrency, formatCPF, formatPhone, roundCurrency } from "../../domain/calculations";
+import { FinancingCalculations, formatCurrency, formatCPF, formatPhone, roundCurrency } from "../../domain/calculations";
 import { fetchApi } from "../api";
 import { useAuth } from "../context/AuthContext";
 import { StatusBadge } from "../components/ui/StatusBadge";
@@ -57,6 +62,32 @@ type StepKey =
   | "financiamento"
   | "documentos";
 
+interface FinancingStepData {
+  financing: FinancingScenario | null;
+  guarantees: Guarantee[];
+  calculations: FinancingCalculations | null;
+  creditLines: CreditLine[];
+  saldoOperacional: number[];
+}
+
+interface IdentificationStepData {
+  proposalId: string;
+  identification: ProposalIdentification;
+  jobs: ProposalJob[];
+  usesSources: ProposalUseSource[];
+  patrimonioRealizado: Array<{
+    tipo: "USO";
+    categoria: string;
+    realizado: number;
+    aRealizar: number;
+    total: number;
+  }>;
+  totalUsos: number;
+  totalFontes: number;
+  diferenca: number;
+  pendencias: string[];
+}
+
 export const ProcessosView: React.FC<ProcessosViewProps> = ({
   proposals,
   beneficiaries,
@@ -65,7 +96,7 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
   onSelectProposal,
   onRefresh,
 }) => {
-  const { role, canEdit } = useAuth();
+  const { role, canEdit, isGestor } = useAuth();
   const [activeStep, setActiveStep] = useState<StepKey>("dadosGerais");
 
   // New proposal modal
@@ -82,9 +113,9 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
 
   // Step specific states
   const [patrimonyData, setPatrimonyData] = useState<any>(null);
-  const [identificationData, setIdentificationData] = useState<any>(null);
+  const [identificationData, setIdentificationData] = useState<IdentificationStepData | null>(null);
   const [cashFlowData, setCashFlowData] = useState<any>(null);
-  const [financingData, setFinancingData] = useState<any>(null);
+  const [financingData, setFinancingData] = useState<FinancingStepData | null>(null);
   const [documentsData, setDocumentsData] = useState<ProposalDocument[]>([]);
   const [loadingStep, setLoadingStep] = useState(false);
   const [stepActionError, setStepActionError] = useState("");
@@ -110,42 +141,57 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
   const [newCashItem, setNewCashItem] = useState({
     tipo: "RECEITA" as CashFlowItemType,
     descricao: "",
-    unidade: "Kg",
-    quantidade: 100,
-    valorUnitario: 20,
-    ano1: 15000,
-    ano2: 20000,
-    ano3: 25000,
-    ano4: 30000,
-    ano5: 30000,
-    ano6: 30000,
-    ano7: 30000,
+    unidade: "",
+    quantidade: 0,
+    valorUnitario: 0,
+    ano1: 0,
+    ano2: 0,
+    ano3: 0,
+    ano4: 0,
+    ano5: 0,
+    ano6: 0,
+    ano7: 0,
   });
 
   // Financing form
   const [financingForm, setFinancingForm] = useState({
     linhaCreditoId: "",
-    valorProposta: 50000,
-    percentualFinanciavel: 100,
-    percentualAter: 2.5,
-    taxaJurosAnual: 2.0,
-    prazoTotalAnos: 5,
-    carenciaAnos: 1,
+    valorProposta: 0,
+    percentualFinanciavel: 0,
+    percentualAter: 0,
+    taxaJurosAnual: 0,
+    prazoTotalAnos: 0,
+    carenciaAnos: 0,
     jurosCarencia: "PAGAR" as "PAGAR" | "CAPITALIZAR",
   });
 
   // Guarantee form
   const [newGuarantee, setNewGuarantee] = useState({
     tipo: "AVAL_PESSOAL" as "AVAL_PESSOAL" | "BEM" | "OUTRA",
-    descricao: "Avalista Solidário com Renda Comprovada",
+    descricao: "",
     garantidorNome: "",
     garantidorCpf: "",
     garantidorTelefone: "",
-    valorEstimado: 50000,
+    valorEstimado: 0,
   });
 
   // Document upload form
   const [uploadDocType, setUploadDocType] = useState<DocumentType>("CAF_DAP");
+
+  useEffect(() => {
+    if (!selectedProposal) return;
+    const stageOrder: { key: StepKey; status: StepStatus }[] = [
+      { key: "dadosGerais", status: selectedProposal.etapas.dadosGerais.status },
+      { key: "beneficiario", status: selectedProposal.etapas.beneficiario.status },
+      { key: "propriedade", status: selectedProposal.etapas.propriedade.status },
+      { key: "patrimonio", status: selectedProposal.etapas.patrimonio.status },
+      { key: "identificacao", status: selectedProposal.etapas.identificacao.status },
+      { key: "fluxoCaixa", status: selectedProposal.etapas.fluxoCaixa.status },
+      { key: "financiamento", status: selectedProposal.etapas.financiamento.status },
+      { key: "documentos", status: selectedProposal.etapas.documentos.status },
+    ];
+    setActiveStep(stageOrder.find((stage) => stage.status !== "CONCLUIDO")?.key || "documentos");
+  }, [selectedProposal?.proposal.id]);
 
   // Load step details when proposal changes
   useEffect(() => {
@@ -163,13 +209,13 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
         const data = await fetchApi(`/api/proposals/${proposalId}/patrimony`, {}, role);
         setPatrimonyData(data);
       } else if (activeStep === "identificacao") {
-        const data = await fetchApi(`/api/proposals/${proposalId}/identification`, {}, role);
+        const data = await fetchApi<IdentificationStepData>(`/api/proposals/${proposalId}/identification`, {}, role);
         setIdentificationData(data);
       } else if (activeStep === "fluxoCaixa") {
         const data = await fetchApi(`/api/proposals/${proposalId}/cashflow`, {}, role);
         setCashFlowData(data);
       } else if (activeStep === "financiamento") {
-        const data = await fetchApi(`/api/proposals/${proposalId}/financing`, {}, role);
+        const data = await fetchApi<FinancingStepData>(`/api/proposals/${proposalId}/financing`, {}, role);
         setFinancingData(data);
         if (data.financing) {
           setFinancingForm({
@@ -181,6 +227,17 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
             prazoTotalAnos: data.financing.prazoTotalAnos,
             carenciaAnos: data.financing.carenciaAnos,
             jurosCarencia: data.financing.jurosCarencia,
+          });
+        } else {
+          setFinancingForm({
+            linhaCreditoId: "",
+            valorProposta: 0,
+            percentualFinanciavel: 0,
+            percentualAter: 0,
+            taxaJurosAnual: 0,
+            prazoTotalAnos: 0,
+            carenciaAnos: 0,
+            jurosCarencia: "PAGAR",
           });
         }
       } else if (activeStep === "documentos") {
@@ -223,6 +280,27 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
       setCreationError(err.message || "Erro ao criar processo");
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleStatusTransition = async (
+    status: ProposalDetailView["proposal"]["status"],
+    requiresReason = false
+  ) => {
+    if (!selectedProposalId) return;
+    const reason = requiresReason
+      ? window.prompt("Informe o motivo desta alteração de status:")
+      : "";
+    if (requiresReason && !reason?.trim()) return;
+    try {
+      setStepActionError("");
+      await fetchApi(`/api/proposals/${selectedProposalId}/status`, {
+        method: "POST",
+        body: JSON.stringify({ status, reason: reason || "" }),
+      });
+      await onRefresh();
+    } catch (err: any) {
+      setStepActionError(err.message);
     }
   };
 
@@ -309,11 +387,26 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
     }
   };
 
-  // Identificação Handlers
-  const handleSaveIdentification = async () => {
-    if (!selectedProposalId || !identificationData?.identification) return;
+  const handleConfirmPatrimonyDebts = async (confirmed: boolean) => {
+    if (!selectedProposalId) return;
     try {
       const data = await fetchApi(
+        `/api/proposals/${selectedProposalId}/patrimony/debts-confirmation`,
+        { method: "POST", body: JSON.stringify({ confirmed }) },
+        role
+      );
+      setPatrimonyData(data);
+      await onRefresh();
+    } catch (err: any) {
+      setStepActionError(err.message);
+    }
+  };
+
+  // Identificação Handlers
+  const handleSaveIdentification = async (): Promise<boolean> => {
+    if (!selectedProposalId || !identificationData?.identification) return false;
+    try {
+      const data = await fetchApi<IdentificationStepData>(
         `/api/proposals/${selectedProposalId}/identification`,
         {
           method: "POST",
@@ -323,24 +416,35 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
             faturamentoUltimoAno: identificationData.identification.faturamentoUltimoAno,
             analiseLocalizacao: identificationData.identification.analiseLocalizacao,
             consideracoes: identificationData.identification.consideracoes,
-            jobs: identificationData.jobs,
-            usesSources: identificationData.usesSources,
+            empregosConfirmados: identificationData.identification.empregosConfirmados,
+            usosFontesConfirmados: identificationData.identification.usosFontesConfirmados,
+            jobs: identificationData.jobs.map(({ categoria, faseAtual, faseExpansao }) => ({
+              categoria,
+              faseAtual,
+              faseExpansao,
+            })),
+            usesSources: identificationData.usesSources.map(
+              ({ tipo, categoria, realizado, aRealizar }) => ({ tipo, categoria, realizado, aRealizar })
+            ),
           }),
         },
         role
       );
       setIdentificationData(data);
       await onRefresh();
+      return true;
     } catch (err: any) {
       setStepActionError(err.message);
+      return false;
     }
   };
 
   const handleCompleteIdentification = async () => {
     if (!selectedProposalId) return;
     try {
-      await handleSaveIdentification();
-      const data = await fetchApi(
+      const saved = await handleSaveIdentification();
+      if (!saved) return;
+      const data = await fetchApi<IdentificationStepData>(
         `/api/proposals/${selectedProposalId}/identification/complete`,
         { method: "POST" },
         role
@@ -351,6 +455,104 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
     } catch (err: any) {
       setStepActionError(err.message);
     }
+  };
+
+  const updateJob = (index: number, field: "faseAtual" | "faseExpansao", value: number) => {
+    if (!identificationData) return;
+    const jobs = identificationData.jobs.map((job, jobIndex) => {
+      if (jobIndex !== index) return job;
+      const updated = { ...job, [field]: Math.max(0, Math.trunc(value || 0)) };
+      return { ...updated, total: updated.faseAtual + updated.faseExpansao };
+    });
+    setIdentificationData({
+      ...identificationData,
+      jobs,
+      identification: { ...identificationData.identification, empregosConfirmados: false },
+    });
+  };
+
+  const addUseSource = (tipo: "USO" | "FONTE") => {
+    if (!identificationData) return;
+    const now = new Date().toISOString();
+    setIdentificationData({
+      ...identificationData,
+      usesSources: [
+        ...identificationData.usesSources,
+        {
+          id: `form-${crypto.randomUUID()}`,
+          proposalId: identificationData.proposalId,
+          tipo,
+          categoria: "",
+          realizado: 0,
+          aRealizar: 0,
+          total: 0,
+          createdAt: now,
+          updatedAt: now,
+        },
+      ],
+      identification: { ...identificationData.identification, usosFontesConfirmados: false },
+    });
+  };
+
+  const updateUseSource = (
+    index: number,
+    field: "categoria" | "realizado" | "aRealizar",
+    value: string | number
+  ) => {
+    if (!identificationData) return;
+    const usesSources = identificationData.usesSources.map((item, itemIndex) => {
+      if (itemIndex !== index) return item;
+      const updated = { ...item, [field]: value };
+      return {
+        ...updated,
+        total: roundCurrency(Number(updated.realizado) + Number(updated.aRealizar)),
+      };
+    });
+    setIdentificationData({
+      ...identificationData,
+      usesSources,
+      identification: { ...identificationData.identification, usosFontesConfirmados: false },
+    });
+  };
+
+  const removeUseSource = (index: number) => {
+    if (!identificationData) return;
+    setIdentificationData({
+      ...identificationData,
+      usesSources: identificationData.usesSources.filter((_, itemIndex) => itemIndex !== index),
+      identification: { ...identificationData.identification, usosFontesConfirmados: false },
+    });
+  };
+
+  const importPatrimonyUses = () => {
+    if (!identificationData) return;
+    const now = new Date().toISOString();
+    const usesSources = [...identificationData.usesSources];
+    for (const imported of identificationData.patrimonioRealizado) {
+      const index = usesSources.findIndex(
+        (item) => item.tipo === "USO" && item.categoria === imported.categoria
+      );
+      if (index >= 0) {
+        usesSources[index] = {
+          ...usesSources[index],
+          realizado: imported.realizado,
+          total: roundCurrency(imported.realizado + usesSources[index].aRealizar),
+        };
+      } else {
+        usesSources.push({
+          ...imported,
+          id: `form-${crypto.randomUUID()}`,
+          proposalId: identificationData.proposalId,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+    }
+    setIdentificationData({
+      ...identificationData,
+      usesSources,
+      identification: { ...identificationData.identification, usosFontesConfirmados: false },
+    });
   };
 
   // Cash Flow Handlers
@@ -403,11 +605,26 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
     }
   };
 
+  const handleConfirmCashFlowProjection = async (confirmed: boolean) => {
+    if (!selectedProposalId) return;
+    try {
+      const data = await fetchApi(
+        `/api/proposals/${selectedProposalId}/cashflow/confirmation`,
+        { method: "POST", body: JSON.stringify({ confirmed }) },
+        role
+      );
+      setCashFlowData(data);
+      await onRefresh();
+    } catch (err: any) {
+      setStepActionError(err.message);
+    }
+  };
+
   // Financing Handlers
   const handleSaveFinancing = async () => {
     if (!selectedProposalId || !financingForm.linhaCreditoId) return;
     try {
-      const data = await fetchApi(
+      const data = await fetchApi<FinancingStepData>(
         `/api/proposals/${selectedProposalId}/financing`,
         {
           method: "POST",
@@ -425,7 +642,7 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
   const handleAddGuarantee = async () => {
     if (!selectedProposalId || !newGuarantee.descricao) return;
     try {
-      const data = await fetchApi(
+      const data = await fetchApi<FinancingStepData>(
         `/api/proposals/${selectedProposalId}/financing/guarantees`,
         {
           method: "POST",
@@ -443,7 +660,7 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
   const handleDeleteGuarantee = async (guaranteeId: string) => {
     if (!selectedProposalId) return;
     try {
-      const data = await fetchApi(
+      const data = await fetchApi<FinancingStepData>(
         `/api/proposals/${selectedProposalId}/financing/guarantees/${guaranteeId}`,
         { method: "DELETE" },
         role
@@ -458,8 +675,7 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
   const handleCompleteFinancing = async () => {
     if (!selectedProposalId) return;
     try {
-      await handleSaveFinancing();
-      const data = await fetchApi(
+      const data = await fetchApi<FinancingStepData>(
         `/api/proposals/${selectedProposalId}/financing/complete`,
         { method: "POST" },
         role
@@ -467,6 +683,24 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
       setFinancingData(data);
       await onRefresh();
       setActiveStep("documentos");
+    } catch (err: any) {
+      setStepActionError(err.message);
+    }
+  };
+
+  const handleConfirmFinancing = async (
+    kind: "guarantees-confirmation" | "schedule-confirmation",
+    confirmed: boolean
+  ) => {
+    if (!selectedProposalId) return;
+    try {
+      const data = await fetchApi<FinancingStepData>(
+        `/api/proposals/${selectedProposalId}/financing/${kind}`,
+        { method: "POST", body: JSON.stringify({ confirmed }) },
+        role
+      );
+      setFinancingData(data);
+      await onRefresh();
     } catch (err: any) {
       setStepActionError(err.message);
     }
@@ -503,7 +737,7 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
     }
   };
 
-  const handleConfirmDocumentAI = async (docId: string, verifiedData: any) => {
+  const handleConfirmDocument = async (docId: string, verifiedData?: Record<string, unknown>) => {
     if (!selectedProposalId) return;
     try {
       await fetchApi(
@@ -546,11 +780,12 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
         { key: "identificacao", num: 5, label: "Identificação", status: selectedProposal.etapas.identificacao.status },
         { key: "fluxoCaixa", num: 6, label: "Fluxo de Caixa", status: selectedProposal.etapas.fluxoCaixa.status },
         { key: "financiamento", num: 7, label: "Financiamento", status: selectedProposal.etapas.financiamento.status },
-        { key: "documentos", num: 8, label: "Documentos & IA", status: selectedProposal.etapas.documentos.status },
+        { key: "documentos", num: 8, label: "Documentos", status: selectedProposal.etapas.documentos.status },
       ]
     : [];
 
   const availablePropertiesForNew = properties.filter((p) => p.beneficiaryId === newBeneficiaryId);
+  const activePendencias = selectedProposal?.etapas[activeStep].pendencias || [];
 
   // If no proposal selected, show list
   if (!selectedProposal) {
@@ -701,7 +936,7 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
                 <option value="">Selecione a propriedade</option>
                 {availablePropertiesForNew.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.denominacao} - {p.municipio} ({p.areaTotalHa} ha)
+                    {p.denominacao} - {p.municipio} ({p.areaTotal} ha)
                   </option>
                 ))}
               </select>
@@ -757,6 +992,27 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
   }
 
   // Active Esteira View
+  const currentTotalUsos = roundCurrency(
+    identificationData?.usesSources
+      .filter((item) => item.tipo === "USO")
+      .reduce((total, item) => total + Number(item.realizado) + Number(item.aRealizar), 0) || 0
+  );
+  const currentTotalFontes = roundCurrency(
+    identificationData?.usesSources
+      .filter((item) => item.tipo === "FONTE")
+      .reduce((total, item) => total + Number(item.realizado) + Number(item.aRealizar), 0) || 0
+  );
+  const currentDifference = roundCurrency(currentTotalFontes - currentTotalUsos);
+  const identificationCanComplete =
+    Boolean(identificationData?.identification.finalidade.trim()) &&
+    Boolean(identificationData?.identification.mercado.trim()) &&
+    Boolean(identificationData?.identification.analiseLocalizacao.trim()) &&
+    Boolean(identificationData?.identification.consideracoes.trim()) &&
+    Boolean(identificationData?.identification.empregosConfirmados) &&
+    Boolean(identificationData?.identification.usosFontesConfirmados) &&
+    currentTotalUsos > 0 &&
+    Math.abs(currentDifference) < 0.01;
+
   return (
     <div className="space-y-6">
       {/* Header with Back button and General Proposal Info */}
@@ -786,6 +1042,26 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
         </div>
 
         <div className="flex items-center gap-4 border-t md:border-t-0 pt-3 md:pt-0">
+          <div className="flex flex-wrap justify-end gap-2">
+            {canEdit && selectedProposal.proposal.status === "EM ELABORAÇÃO" && (
+              <button onClick={() => void handleStatusTransition("EM ANÁLISE")} className="px-3 py-2 bg-[#1351b4] text-white rounded-lg text-xs font-bold">Enviar para análise</button>
+            )}
+            {isGestor && selectedProposal.proposal.status === "EM ANÁLISE" && (
+              <>
+                <button onClick={() => void handleStatusTransition("RECUSADO", true)} className="px-3 py-2 border border-rose-300 text-rose-700 rounded-lg text-xs font-bold">Recusar</button>
+                <button onClick={() => void handleStatusTransition("APROVADO")} className="px-3 py-2 bg-emerald-600 text-white rounded-lg text-xs font-bold">Aprovar</button>
+              </>
+            )}
+            {canEdit && selectedProposal.proposal.status === "RECUSADO" && (
+              <button onClick={() => void handleStatusTransition("EM ELABORAÇÃO")} className="px-3 py-2 bg-[#1351b4] text-white rounded-lg text-xs font-bold">Retomar elaboração</button>
+            )}
+            {isGestor && selectedProposal.proposal.status === "APROVADO" && (
+              <button onClick={() => void handleStatusTransition("CONCLUÍDO")} className="px-3 py-2 bg-emerald-700 text-white rounded-lg text-xs font-bold">Concluir processo</button>
+            )}
+            {isGestor && selectedProposal.proposal.status === "CONCLUÍDO" && (
+              <button onClick={() => void handleStatusTransition("EM ANÁLISE", true)} className="px-3 py-2 border border-amber-400 text-amber-800 rounded-lg text-xs font-bold">Reabrir análise</button>
+            )}
+          </div>
           <div className="text-right">
             <span className="text-xs font-semibold text-slate-500 block">Completude Global</span>
             <div className="flex items-center gap-2 mt-0.5">
@@ -852,6 +1128,15 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
           })}
         </div>
       </div>
+
+      {activePendencias.length > 0 && (
+        <div className="p-4 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs">
+          <strong className="block mb-1">Pendências desta etapa</strong>
+          <ul className="list-disc pl-4 space-y-1">
+            {activePendencias.map((pending) => <li key={pending}>{pending}</li>)}
+          </ul>
+        </div>
+      )}
 
       {/* Action Error Banner */}
       {stepActionError && (
@@ -927,10 +1212,11 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
                   {selectedProposal.etapas.beneficiario.percent}%
                 </p>
                 {selectedProposal.etapas.beneficiario.percent < 100 && (
-                  <p className="text-amber-700 font-semibold">
-                    Complete os dados na aba "Beneficiários (PF)" se houver pendências de cônjuge
-                    ou referências.
-                  </p>
+                  <ul className="text-amber-800 space-y-1 list-disc pl-4">
+                    {selectedProposal.etapas.beneficiario.pendencias.map((pending) => (
+                      <li key={pending}>{pending}</li>
+                    ))}
+                  </ul>
                 )}
               </div>
             </div>
@@ -977,6 +1263,13 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
                 <p>
                   <strong>Status:</strong> {selectedProposal.etapas.propriedade.percent}%
                 </p>
+                {selectedProposal.etapas.propriedade.pendencias.length > 0 && (
+                  <ul className="text-amber-800 space-y-1 list-disc pl-4">
+                    {selectedProposal.etapas.propriedade.pendencias.map((pending) => (
+                      <li key={pending}>{pending}</li>
+                    ))}
+                  </ul>
+                )}
               </div>
             </div>
 
@@ -1116,11 +1409,11 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
                       className="px-2 py-1.5 border rounded bg-white"
                     >
                       <option value="TERRA_COBERTURAS">Terra e Benfeitorias</option>
+                      <option value="CONSTRUCOES_CIVIS">Construções Civis</option>
+                      <option value="ESTRUTURA_AGROPECUARIA">Estrutura Agropecuária</option>
+                      <option value="INFRAESTRUTURA">Infraestrutura</option>
                       <option value="MAQUINAS_EQUIPAMENTOS">Máquinas e Equipamentos</option>
                       <option value="SEMOVENTES">Semoventes / Rebanho</option>
-                      <option value="VEICULOS">Veículos</option>
-                      <option value="PRODUTOS_ESTOQUE">Produtos em Estoque</option>
-                      <option value="CULTURAS_PERMANENTES">Culturas Permanentes</option>
                       <option value="OUTROS_BENS_URBANOS">Bens Urbanos</option>
                     </select>
                     <input
@@ -1259,6 +1552,19 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
                   </button>
                 </div>
               )}
+              <label className="mt-3 flex items-start gap-2 p-3 border border-amber-200 bg-amber-50 rounded-xl text-xs text-amber-950">
+                <input
+                  type="checkbox"
+                  checked={Boolean(patrimonyData?.dividasConfirmadas)}
+                  disabled={!canEdit}
+                  onChange={(event) => void handleConfirmPatrimonyDebts(event.target.checked)}
+                  className="mt-0.5"
+                />
+                <span>
+                  <strong className="block">Situação das dívidas revisada</strong>
+                  Confirmo que as dívidas registradas — ou a inexistência delas — foram conferidas com o beneficiário.
+                </span>
+              </label>
             </div>
 
             {/* Complete step action */}
@@ -1272,7 +1578,8 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
               {canEdit && (
                 <button
                   onClick={handleCompletePatrimony}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-5 py-2.5 rounded-lg flex items-center gap-2 shadow-xs"
+                  disabled={!patrimonyData?.hasItems || !patrimonyData?.dividasConfirmadas}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-5 py-2.5 rounded-lg flex items-center gap-2 shadow-xs disabled:opacity-50"
                 >
                   <CheckCheck className="w-4 h-4" /> Concluir Levantamento Patrimonial
                 </button>
@@ -1381,27 +1688,221 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
                   </div>
                 </div>
 
-                {/* Usos e Fontes balance summary */}
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Considerações Técnicas *</label>
+                  <textarea
+                    rows={3}
+                    value={identificationData.identification.consideracoes || ""}
+                    onChange={(event) =>
+                      setIdentificationData({
+                        ...identificationData,
+                        identification: {
+                          ...identificationData.identification,
+                          consideracoes: event.target.value,
+                        },
+                      })
+                    }
+                    placeholder="Registre premissas, riscos e observações relevantes para a proposta..."
+                    className="w-full p-2.5 border rounded-lg outline-hidden focus:border-blue-600"
+                  />
+                </div>
+
+                <section className="border rounded-xl overflow-hidden">
+                  <div className="px-4 py-3 bg-slate-50 border-b">
+                    <h4 className="font-bold text-slate-800">Empregos</h4>
+                    <p className="text-slate-500">Indicador físico atual, expansão prevista e total após o projeto.</p>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[620px]">
+                      <thead className="text-slate-500 bg-white border-b">
+                        <tr>
+                          <th className="text-left px-4 py-2">Categoria</th>
+                          <th className="text-right px-3 py-2">Situação atual</th>
+                          <th className="text-right px-3 py-2">Expansão</th>
+                          <th className="text-right px-4 py-2">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {identificationData.jobs.map((job, index) => (
+                          <tr key={job.categoria}>
+                            <td className="px-4 py-2 font-semibold capitalize">
+                              {job.categoria.toLowerCase().replaceAll("_", " ")}
+                            </td>
+                            <td className="px-3 py-2">
+                              <input
+                                type="number"
+                                min={0}
+                                step={1}
+                                disabled={!canEdit}
+                                value={job.faseAtual}
+                                onChange={(event) => updateJob(index, "faseAtual", Number(event.target.value))}
+                                className="w-full p-2 border rounded-lg text-right font-mono"
+                              />
+                            </td>
+                            <td className="px-3 py-2">
+                              <input
+                                type="number"
+                                min={0}
+                                step={1}
+                                disabled={!canEdit}
+                                value={job.faseExpansao}
+                                onChange={(event) => updateJob(index, "faseExpansao", Number(event.target.value))}
+                                className="w-full p-2 border rounded-lg text-right font-mono"
+                              />
+                            </td>
+                            <td className="px-4 py-2 text-right font-mono font-bold">{job.total}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <label className="flex items-start gap-2 m-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-950">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5"
+                      disabled={!canEdit}
+                      checked={identificationData.identification.empregosConfirmados}
+                      onChange={(event) =>
+                        setIdentificationData({
+                          ...identificationData,
+                          identification: {
+                            ...identificationData.identification,
+                            empregosConfirmados: event.target.checked,
+                          },
+                        })
+                      }
+                    />
+                    Confirmo que a situação atual e a expansão de empregos foram revisadas.
+                  </label>
+                </section>
+
+                <section className="border rounded-xl overflow-hidden">
+                  <div className="px-4 py-3 bg-slate-50 border-b flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <h4 className="font-bold text-slate-800">Usos e Fontes</h4>
+                      <p className="text-slate-500">Separe valores já realizados dos valores ainda a realizar.</p>
+                    </div>
+                    {canEdit && identificationData.patrimonioRealizado.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={importPatrimonyUses}
+                        className="border border-blue-300 text-blue-700 px-3 py-2 rounded-lg font-bold"
+                      >
+                        Importar realizado do patrimônio
+                      </button>
+                    )}
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[760px]">
+                      <thead className="text-slate-500 border-b">
+                        <tr>
+                          <th className="text-left px-3 py-2">Tipo</th>
+                          <th className="text-left px-3 py-2">Categoria</th>
+                          <th className="text-right px-3 py-2">Realizado</th>
+                          <th className="text-right px-3 py-2">A realizar</th>
+                          <th className="text-right px-3 py-2">Total</th>
+                          <th className="w-10" />
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {identificationData.usesSources.map((item, index) => (
+                          <tr key={item.id}>
+                            <td className="px-3 py-2 font-bold">{item.tipo === "USO" ? "Uso" : "Fonte"}</td>
+                            <td className="px-3 py-2">
+                              <input
+                                disabled={!canEdit}
+                                value={item.categoria}
+                                onChange={(event) => updateUseSource(index, "categoria", event.target.value)}
+                                placeholder={item.tipo === "USO" ? "Ex.: Máquinas" : "Ex.: Recursos próprios"}
+                                className="w-full p-2 border rounded-lg"
+                              />
+                            </td>
+                            <td className="px-3 py-2">
+                              <input
+                                type="number"
+                                min={0}
+                                step="0.01"
+                                disabled={!canEdit}
+                                value={item.realizado}
+                                onChange={(event) => updateUseSource(index, "realizado", Math.max(0, Number(event.target.value)))}
+                                className="w-full p-2 border rounded-lg text-right font-mono"
+                              />
+                            </td>
+                            <td className="px-3 py-2">
+                              <input
+                                type="number"
+                                min={0}
+                                step="0.01"
+                                disabled={!canEdit}
+                                value={item.aRealizar}
+                                onChange={(event) => updateUseSource(index, "aRealizar", Math.max(0, Number(event.target.value)))}
+                                className="w-full p-2 border rounded-lg text-right font-mono"
+                              />
+                            </td>
+                            <td className="px-3 py-2 text-right font-mono font-bold">{formatCurrency(item.total)}</td>
+                            <td className="pr-2">
+                              {canEdit && (
+                                <button
+                                  type="button"
+                                  onClick={() => removeUseSource(index)}
+                                  aria-label="Remover linha"
+                                  className="text-red-600 p-2"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {canEdit && (
+                    <div className="p-3 border-t flex gap-2">
+                      <button type="button" onClick={() => addUseSource("USO")} className="border px-3 py-2 rounded-lg font-bold">
+                        <Plus className="inline w-3.5 h-3.5 mr-1" /> Uso
+                      </button>
+                      <button type="button" onClick={() => addUseSource("FONTE")} className="border px-3 py-2 rounded-lg font-bold">
+                        <Plus className="inline w-3.5 h-3.5 mr-1" /> Fonte
+                      </button>
+                    </div>
+                  )}
+                  <label className="flex items-start gap-2 m-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-950">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5"
+                      disabled={!canEdit || currentTotalUsos <= 0 || Math.abs(currentDifference) >= 0.01}
+                      checked={identificationData.identification.usosFontesConfirmados}
+                      onChange={(event) =>
+                        setIdentificationData({
+                          ...identificationData,
+                          identification: {
+                            ...identificationData.identification,
+                            usosFontesConfirmados: event.target.checked,
+                          },
+                        })
+                      }
+                    />
+                    Confirmo que usos e fontes foram revisados e estão equilibrados.
+                  </label>
+                </section>
+
                 <div className="p-4 bg-slate-50 rounded-xl border flex items-center justify-between">
                   <div>
                     <span className="font-bold text-slate-700 block">Equilíbrio Usos e Fontes</span>
                     <span className="text-slate-500">
-                      Total Usos: {formatCurrency(identificationData.totalUsos)} | Total Fontes:{" "}
-                      {formatCurrency(identificationData.totalFontes)}
+                      Total Usos: {formatCurrency(currentTotalUsos)} | Total Fontes:{" "}
+                      {formatCurrency(currentTotalFontes)} | Diferença: {formatCurrency(currentDifference)}
                     </span>
                   </div>
                   <span
                     className={`font-bold px-3 py-1 rounded-full text-xs ${
-                      identificationData.totalUsos === identificationData.totalFontes &&
-                      identificationData.totalUsos > 0
+                      Math.abs(currentDifference) < 0.01 && currentTotalUsos > 0
                         ? "bg-emerald-100 text-emerald-800"
-                        : "bg-amber-100 text-amber-800"
+                        : "bg-red-100 text-red-800"
                     }`}
                   >
-                    {identificationData.totalUsos === identificationData.totalFontes &&
-                    identificationData.totalUsos > 0
-                      ? "Balanceado"
-                      : "Em Ajuste"}
+                    {Math.abs(currentDifference) < 0.01 && currentTotalUsos > 0 ? "Balanceado" : "Divergência"}
                   </span>
                 </div>
               </div>
@@ -1426,7 +1927,8 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
                 {canEdit && (
                   <button
                     onClick={handleCompleteIdentification}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-5 py-2 rounded-lg flex items-center gap-2"
+                    disabled={!identificationCanComplete}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-5 py-2 rounded-lg flex items-center gap-2 disabled:opacity-50"
                   >
                     <CheckCheck className="w-4 h-4" /> Concluir Identificação
                   </button>
@@ -1577,7 +2079,7 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
               {canEdit && (
                 <div className="p-4 bg-slate-50 rounded-xl border space-y-2 text-xs">
                   <span className="font-bold text-slate-700 block">Lançar Item no Fluxo</span>
-                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <select
                       value={newCashItem.tipo}
                       onChange={(e) =>
@@ -1605,28 +2107,59 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
                       onChange={(e) => setNewCashItem({ ...newCashItem, unidade: e.target.value })}
                       className="px-2 py-1.5 border rounded bg-white"
                     />
-                    <div className="flex gap-2">
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      placeholder="Quantidade"
+                      value={newCashItem.quantidade || ""}
+                      onChange={(event) => {
+                        const quantidade = Number(event.target.value);
+                        setNewCashItem({
+                          ...newCashItem,
+                          quantidade,
+                          ano1: roundCurrency(quantidade * newCashItem.valorUnitario),
+                        });
+                      }}
+                      className="px-2 py-1.5 border rounded bg-white font-mono"
+                    />
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      placeholder="Valor unitário"
+                      value={newCashItem.valorUnitario || ""}
+                      onChange={(event) => {
+                        const valorUnitario = Number(event.target.value);
+                        setNewCashItem({
+                          ...newCashItem,
+                          valorUnitario,
+                          ano1: roundCurrency(newCashItem.quantidade * valorUnitario),
+                        });
+                      }}
+                      className="px-2 py-1.5 border rounded bg-white font-mono"
+                    />
+                    <div className="px-3 py-2 border rounded bg-blue-50 text-blue-950">
+                      <span className="block text-[10px] uppercase font-bold">Ano 1 = quantidade × valor unitário</span>
+                      <span className="font-mono font-bold">{formatCurrency(newCashItem.ano1)}</span>
+                    </div>
+                    {(["ano2", "ano3", "ano4", "ano5", "ano6", "ano7"] as const).map((year, index) => (
                       <input
+                        key={year}
                         type="number"
-                        placeholder="Valor Ano 1"
-                        value={newCashItem.ano1}
-                        onChange={(e) =>
-                          setNewCashItem({
-                            ...newCashItem,
-                            ano1: Number(e.target.value),
-                            ano2: Number(e.target.value),
-                            ano3: Number(e.target.value),
-                            ano4: Number(e.target.value),
-                            ano5: Number(e.target.value),
-                            ano6: Number(e.target.value),
-                            ano7: Number(e.target.value),
-                          })
-                        }
-                        className="px-2 py-1.5 border rounded bg-white font-mono w-full"
+                        min={0}
+                        step="0.01"
+                        placeholder={`Valor Ano ${index + 2}`}
+                        value={newCashItem[year] || ""}
+                        onChange={(event) => setNewCashItem({ ...newCashItem, [year]: Number(event.target.value) })}
+                        className="px-2 py-1.5 border rounded bg-white font-mono"
                       />
+                    ))}
+                    <div className="sm:col-span-3 flex justify-end">
                       <button
                         onClick={handleAddCashFlowItem}
-                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1.5 rounded text-xs shrink-0"
+                        disabled={!newCashItem.descricao.trim() || !newCashItem.unidade.trim() || newCashItem.ano1 <= 0}
+                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded text-xs disabled:opacity-50"
                       >
                         + Lançar
                       </button>
@@ -1635,6 +2168,24 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
                 </div>
               )}
             </div>
+
+            <label className="flex items-start gap-2 p-3 border border-amber-200 bg-amber-50 rounded-xl text-xs text-amber-950">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                disabled={
+                  !canEdit ||
+                  !cashFlowData?.items?.some((item: CashFlowItem) => item.tipo === "RECEITA") ||
+                  !cashFlowData?.items?.some((item: CashFlowItem) => item.tipo !== "RECEITA")
+                }
+                checked={Boolean(cashFlowData?.projecaoConfirmada)}
+                onChange={(event) => void handleConfirmCashFlowProjection(event.target.checked)}
+              />
+              <span>
+                <strong className="block">Projeção de sete anos revisada</strong>
+                Confirmo que receitas, custos e resultados acumulados foram conferidos.
+              </span>
+            </label>
 
             <div className="flex items-center justify-between pt-4 border-t">
               <button
@@ -1646,7 +2197,8 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
               {canEdit && (
                 <button
                   onClick={handleCompleteCashFlow}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-5 py-2.5 rounded-lg flex items-center gap-2 shadow-xs"
+                  disabled={!cashFlowData?.projecaoConfirmada}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-5 py-2.5 rounded-lg flex items-center gap-2 shadow-xs disabled:opacity-50"
                 >
                   <CheckCheck className="w-4 h-4" /> Concluir Fluxo de Caixa
                 </button>
@@ -1701,9 +2253,11 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
                       setFinancingForm({
                         ...financingForm,
                         linhaCreditoId: e.target.value,
-                        prazoTotalAnos: line?.prazoMaxAnos || 5,
-                        carenciaAnos: line?.carenciaMaxAnos || 1,
-                        taxaJurosAnual: line?.taxaJurosAnual || 2.0,
+                        percentualFinanciavel: line?.percentualFinanciavelMax ?? 0,
+                        percentualAter: line?.percentualAterPadrao ?? 0,
+                        prazoTotalAnos: line?.prazoMaxAnos ?? 0,
+                        carenciaAnos: line?.carenciaMaxAnos ?? 0,
+                        taxaJurosAnual: line?.taxaJurosAnual ?? 0,
                       });
                     }}
                     className="w-full p-2 border rounded bg-white"
@@ -1742,6 +2296,24 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
                     <option value="PAGAR">Pagar no ano (PAGAR)</option>
                     <option value="CAPITALIZAR">Capitalizar no saldo (CAPITALIZAR)</option>
                   </select>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Percentual Financiável (%)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={100}
+                    step="0.01"
+                    value={financingForm.percentualFinanciavel || ""}
+                    onChange={(event) =>
+                      setFinancingForm({
+                        ...financingForm,
+                        percentualFinanciavel: Number(event.target.value),
+                      })
+                    }
+                    className="w-full p-2 border rounded bg-white font-mono"
+                  />
                 </div>
 
                 <div>
@@ -1799,7 +2371,8 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
                 <div className="flex justify-end">
                   <button
                     onClick={handleSaveFinancing}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-1.5 rounded text-xs"
+                    disabled={!financingForm.linhaCreditoId || financingForm.valorProposta <= 0}
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-1.5 rounded text-xs disabled:opacity-50"
                   >
                     Recalcular SAC
                   </button>
@@ -1809,7 +2382,7 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
 
             {/* SAC Schedule Table */}
             {financingData?.calculations?.cronograma && (
-              <div>
+              <div className="space-y-3">
                 <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
                   Quadro de Amortização SAC Rural
                 </h4>
@@ -1857,6 +2430,21 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
                     </tbody>
                   </table>
                 </div>
+                <label className="flex items-start gap-2 p-3 border border-amber-200 bg-amber-50 rounded-xl text-amber-950">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5"
+                    disabled={!canEdit || !financingData.financing}
+                    checked={Boolean(financingData.financing?.cronogramaConfirmado)}
+                    onChange={(event) =>
+                      void handleConfirmFinancing("schedule-confirmation", event.target.checked)
+                    }
+                  />
+                  <span>
+                    <strong className="block">Cronograma financeiro revisado</strong>
+                    Confirmo prazo, carência, juros, amortizações e capacidade operacional indicada.
+                  </span>
+                </label>
               </div>
             )}
 
@@ -1889,7 +2477,8 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
                           <td className="px-4 py-2 font-bold text-blue-900">{g.tipo}</td>
                           <td className="px-4 py-2">{g.descricao}</td>
                           <td className="px-4 py-2 text-slate-600">
-                            {g.garantidorNome ? `${g.garantidorNome} (${g.garantidorCpf})` : "-"}
+                            {g.garantidorNome ? `${g.garantidorNome} (${formatCPF(g.garantidorCpf)})` : "-"}
+                            {g.garantidorTelefone ? ` · ${formatPhone(g.garantidorTelefone)}` : ""}
                           </td>
                           <td className="px-4 py-2 text-right font-mono font-bold">
                             {g.valorEstimado ? formatCurrency(g.valorEstimado) : "-"}
@@ -1942,6 +2531,28 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
                     }
                     className="px-2 py-1 border rounded bg-white"
                   />
+                  {newGuarantee.tipo === "AVAL_PESSOAL" && (
+                    <>
+                      <input
+                        type="text"
+                        placeholder="CPF do avalista"
+                        value={newGuarantee.garantidorCpf}
+                        onChange={(event) =>
+                          setNewGuarantee({ ...newGuarantee, garantidorCpf: event.target.value })
+                        }
+                        className="px-2 py-1 border rounded bg-white"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Telefone do avalista"
+                        value={newGuarantee.garantidorTelefone}
+                        onChange={(event) =>
+                          setNewGuarantee({ ...newGuarantee, garantidorTelefone: event.target.value })
+                        }
+                        className="px-2 py-1 border rounded bg-white"
+                      />
+                    </>
+                  )}
                   <input
                     type="number"
                     placeholder="Valor Estimado"
@@ -1953,12 +2564,28 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
                   />
                   <button
                     onClick={handleAddGuarantee}
-                    className="bg-slate-700 hover:bg-slate-800 text-white font-bold px-3 py-1 rounded"
+                    disabled={!financingData?.financing || !newGuarantee.descricao.trim()}
+                    className="bg-slate-700 hover:bg-slate-800 text-white font-bold px-3 py-1 rounded disabled:opacity-50"
                   >
                     + Vincular Garantia
                   </button>
                 </div>
               )}
+              <label className="mt-3 flex items-start gap-2 p-3 border border-amber-200 bg-amber-50 rounded-xl text-xs text-amber-950">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  disabled={!canEdit || !financingData?.financing}
+                  checked={Boolean(financingData?.financing?.garantiasConfirmadas)}
+                  onChange={(event) =>
+                    void handleConfirmFinancing("guarantees-confirmation", event.target.checked)
+                  }
+                />
+                <span>
+                  <strong className="block">Situação das garantias revisada</strong>
+                  Confirmo que as garantias listadas — ou a inexistência delas — foram conferidas.
+                </span>
+              </label>
             </div>
 
             <div className="flex items-center justify-between pt-4 border-t">
@@ -1971,7 +2598,11 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
               {canEdit && (
                 <button
                   onClick={handleCompleteFinancing}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-5 py-2.5 rounded-lg flex items-center gap-2 shadow-xs"
+                  disabled={
+                    !financingData?.financing?.garantiasConfirmadas ||
+                    !financingData?.financing?.cronogramaConfirmado
+                  }
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-5 py-2.5 rounded-lg flex items-center gap-2 shadow-xs disabled:opacity-50"
                 >
                   <CheckCheck className="w-4 h-4" /> Concluir Financiamento SAC
                 </button>
@@ -1986,13 +2617,10 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
             <div className="flex items-center justify-between border-b pb-2">
               <div>
                 <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                  Etapa 8: Repositório de Documentos & Extração Document AI
-                  <span className="bg-purple-100 text-purple-800 text-[11px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                    <Sparkles className="w-3 h-3" /> IA Integrada
-                  </span>
+                  Etapa 8: Repositório de Documentos
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Upload de CAF/DAP, CAR, CPF, Orçamentos e confirmação de dados extraídos por IA
+                  Upload de CAF/DAP, CAR, CPF, orçamentos e revisão humana dos anexos
                 </p>
               </div>
               <StatusBadge status={selectedProposal.etapas.documentos.status} />
@@ -2005,7 +2633,7 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
                 <div>
                   <h4 className="text-sm font-bold text-slate-800">Enviar Documento do Processo</h4>
                   <p className="text-xs text-slate-500">
-                    Formatos suportados: PDF, PNG, JPG (Extração automática por Document AI)
+                    Formatos suportados: PDF, PNG, JPG e WEBP, até 25 MB
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center justify-center gap-3">
@@ -2025,7 +2653,7 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
                   </select>
 
                   <label className="cursor-pointer bg-[#1351b4] hover:bg-blue-700 text-white font-bold px-4 py-2 rounded-lg text-xs shadow-xs transition-colors flex items-center gap-2">
-                    <span>Selecionar e Digitalizar</span>
+                    <span>Selecionar documento</span>
                     <input
                       type="file"
                       accept=".pdf,.png,.jpg,.jpeg"
@@ -2045,7 +2673,7 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
 
               {documentsData.length === 0 ? (
                 <div className="p-8 text-center text-slate-400 border rounded-xl bg-slate-50 text-xs">
-                  Nenhum documento anexado ao processo. Realize o envio acima para processamento com IA.
+                  Nenhum documento anexado ao processo.
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2073,13 +2701,13 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
                         <StatusBadge status={doc.status} size="sm" />
                       </div>
 
-                      {/* Extracted fields */}
+                      {/* Extracted fields, only present when a real processor is configured */}
                       {doc.extractedData && (
                         <div className="mt-3 p-3 bg-white/90 rounded-lg border border-slate-200/80 text-xs space-y-1">
                           <div className="flex items-center justify-between text-[11px] font-bold text-purple-900 border-b pb-1 mb-1">
                             <span className="flex items-center gap-1">
                               <Sparkles className="w-3 h-3 text-purple-600" />
-                              Campos Estruturados (IA)
+                              Campos estruturados
                             </span>
                             {doc.aiConfidence && (
                               <span className="text-emerald-700 font-mono">
@@ -2110,11 +2738,11 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
                         )}
                         {doc.status !== "CONFIRMED" && canEdit && (
                           <button
-                            onClick={() => handleConfirmDocumentAI(doc.id, doc.extractedData)}
+                            onClick={() => handleConfirmDocument(doc.id, doc.extractedData)}
                             className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-xs"
                           >
                             <CheckCircle className="w-3.5 h-3.5" />
-                            Validar & Confirmar Extração
+                            Revisar e confirmar documento
                           </button>
                         )}
                       </div>

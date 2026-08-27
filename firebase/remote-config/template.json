@@ -2,25 +2,25 @@
   "parameters": {
     "documents_ai": {
       "defaultValue": {
-        "value": "true"
+        "value": "false"
       },
       "description": "Ativa processamento de OCR e extração estruturada de documentos via Document AI / Gemini"
     },
     "realtime_presence": {
       "defaultValue": {
-        "value": "true"
+        "value": "false"
       },
       "description": "Exibe indicadores de presença e edição colaborativa em tempo real"
     },
     "assistant": {
       "defaultValue": {
-        "value": "true"
+        "value": "false"
       },
       "description": "Assistente operacional de análise de crédito e consistência de dados"
     },
     "advanced_maps": {
       "defaultValue": {
-        "value": "true"
+        "value": "false"
       },
       "description": "Recursos avançados de geolocalização e visualização de propriedades no Google Maps"
     },

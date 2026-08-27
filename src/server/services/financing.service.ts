@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { db } from "../db/database";
 import { FinancingScenario, Guarantee, User } from "../../domain/types";
 import { calculateFinancingSchedule, consolidateCashFlow, roundCurrency } from "../../domain/calculations";
+import { RevisionService } from "./revision.service";
 
 export class FinancingService {
   static getByProposalId(proposalId: string) {
@@ -9,7 +10,7 @@ export class FinancingService {
     const proposal = raw.proposals.find((p) => p.id === proposalId);
     if (!proposal) throw new Error("Processo não encontrado");
 
-    let financing = raw.financingScenarios.find((f) => f.proposalId === proposalId);
+    const financing = raw.financingScenarios.find((f) => f.proposalId === proposalId);
     const creditLines = raw.creditLines.filter((l) => l.ativo);
     const guarantees = raw.guarantees.filter((g) => g.proposalId === proposalId);
 
@@ -17,35 +18,6 @@ export class FinancingService {
     const cashItems = raw.cashFlowItems.filter((i) => i.proposalId === proposalId);
     const consolidation = consolidateCashFlow(cashItems);
     const saldoOperacional = consolidation.saldoOperacional;
-
-    if (!financing && creditLines.length > 0) {
-      const defaultLine = creditLines[0];
-      financing = {
-        id: `fin-${crypto.randomUUID()}`,
-        proposalId,
-        linhaCreditoId: defaultLine.id,
-        linhaCreditoNome: defaultLine.nome,
-        valorProposta: 50000,
-        percentualFinanciavel: defaultLine.percentualFinanciavelMax || 100,
-        valorFinanciado: 50000,
-        percentualAter: defaultLine.percentualAterPadrao || 2.5,
-        valorAter: 1250,
-        valorProjeto: 51250,
-        taxaJurosAnual: defaultLine.taxaJurosAnual || 2.0,
-        prazoTotalAnos: defaultLine.prazoMaxAnos || 5,
-        carenciaAnos: defaultLine.carenciaMaxAnos || 1,
-        numeroParcelas: (defaultLine.prazoMaxAnos || 5) - (defaultLine.carenciaMaxAnos || 1),
-        periodicidade: "ANUAL",
-        jurosCarencia: "PAGAR",
-        garantiasConfirmadas: false,
-        cronogramaConfirmado: false,
-        status: "PENDENTE",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      raw.financingScenarios.push(financing);
-      db.save();
-    }
 
     let calculations = null;
     if (financing) {
@@ -82,8 +54,6 @@ export class FinancingService {
       prazoTotalAnos?: number;
       carenciaAnos?: number;
       jurosCarencia?: "PAGAR" | "CAPITALIZAR";
-      garantiasConfirmadas?: boolean;
-      cronogramaConfirmado?: boolean;
     },
     actor: User
   ) {
@@ -110,7 +80,11 @@ export class FinancingService {
     }
 
     const percFin = data.percentualFinanciavel ?? line.percentualFinanciavelMax;
+    if (percFin > line.percentualFinanciavelMax) {
+      throw new Error(`Percentual financiável excede o limite da linha (${line.percentualFinanciavelMax}%)`);
+    }
     const percAter = data.percentualAter ?? line.percentualAterPadrao;
+    if (carencia >= prazo) throw new Error("Carência deve ser menor que o prazo total");
     const valorFinanciado = roundCurrency(data.valorProposta * (percFin / 100));
     const valorAter = roundCurrency(data.valorProposta * (percAter / 100));
     const valorProjeto = roundCurrency(valorFinanciado + valorAter);
@@ -136,8 +110,8 @@ export class FinancingService {
         numeroParcelas: prazo - carencia,
         periodicidade: "ANUAL",
         jurosCarencia: data.jurosCarencia || "PAGAR",
-        garantiasConfirmadas: !!data.garantiasConfirmadas,
-        cronogramaConfirmado: !!data.cronogramaConfirmado,
+        garantiasConfirmadas: false,
+        cronogramaConfirmado: false,
         status: "RASCUNHO",
         createdAt: now,
         updatedAt: now,
@@ -158,11 +132,9 @@ export class FinancingService {
       financing.carenciaAnos = carencia;
       financing.numeroParcelas = prazo - carencia;
       financing.jurosCarencia = data.jurosCarencia || financing.jurosCarencia;
-      financing.garantiasConfirmadas = data.garantiasConfirmadas !== undefined ? !!data.garantiasConfirmadas : financing.garantiasConfirmadas;
-      financing.cronogramaConfirmado = data.cronogramaConfirmado !== undefined ? !!data.cronogramaConfirmado : financing.cronogramaConfirmado;
-      if (financing.status !== "CONCLUIDO") {
-        financing.status = "RASCUNHO";
-      }
+      financing.cronogramaConfirmado = false;
+      financing.status = "RASCUNHO";
+      financing.concluidoEm = null;
       financing.updatedAt = now;
 
       db.logAudit({
@@ -179,6 +151,7 @@ export class FinancingService {
     }
 
     proposal.updatedAt = now;
+    RevisionService.invalidateAfterFinancing(proposalId, actor);
     db.save();
     return this.getByProposalId(proposalId);
   }
@@ -198,6 +171,8 @@ export class FinancingService {
     const raw = db.getRawData();
     const proposal = raw.proposals.find((p) => p.id === proposalId);
     if (!proposal) throw new Error("Processo não encontrado");
+    const financing = raw.financingScenarios.find((item) => item.proposalId === proposalId);
+    if (!financing) throw new Error("Salve as condições do financiamento antes de cadastrar garantias");
 
     const id = `guar-${crypto.randomUUID()}`;
     const now = new Date().toISOString();
@@ -216,7 +191,12 @@ export class FinancingService {
     };
 
     raw.guarantees.push(guarantee);
+    financing.status = "RASCUNHO";
+    financing.garantiasConfirmadas = false;
+    financing.concluidoEm = null;
+    financing.updatedAt = now;
     proposal.updatedAt = now;
+    RevisionService.invalidateAfterFinancing(proposalId, actor);
 
     db.logAudit({
       userId: actor.id,
@@ -233,6 +213,44 @@ export class FinancingService {
     return this.getByProposalId(proposalId);
   }
 
+  static confirmGuarantees(proposalId: string, confirmed: boolean, actor: User) {
+    return this.setConfirmation(proposalId, "garantiasConfirmadas", confirmed, actor);
+  }
+
+  static confirmSchedule(proposalId: string, confirmed: boolean, actor: User) {
+    return this.setConfirmation(proposalId, "cronogramaConfirmado", confirmed, actor);
+  }
+
+  private static setConfirmation(
+    proposalId: string,
+    field: "garantiasConfirmadas" | "cronogramaConfirmado",
+    confirmed: boolean,
+    actor: User
+  ) {
+    const raw = db.getRawData();
+    const proposal = raw.proposals.find((item) => item.id === proposalId);
+    if (!proposal) throw new Error("Processo não encontrado");
+    const financing = raw.financingScenarios.find((item) => item.proposalId === proposalId);
+    if (!financing) throw new Error("Salve as condições do financiamento antes de confirmar a etapa");
+    financing[field] = confirmed;
+    financing.status = "RASCUNHO";
+    financing.concluidoEm = null;
+    financing.updatedAt = new Date().toISOString();
+    proposal.updatedAt = financing.updatedAt;
+    RevisionService.invalidateAfterFinancing(proposalId, actor);
+    db.logAudit({
+      userId: actor.id,
+      userName: actor.name,
+      userRole: actor.role || undefined,
+      acao: `financing.${field}.${confirmed ? "confirmed" : "unconfirmed"}`,
+      entidade: "FinancingScenario",
+      entityId: financing.id,
+      correlationId: crypto.randomUUID(),
+    });
+    db.save();
+    return this.getByProposalId(proposalId);
+  }
+
   static deleteGuarantee(proposalId: string, guaranteeId: string, actor: User) {
     const raw = db.getRawData();
     const proposal = raw.proposals.find((p) => p.id === proposalId);
@@ -242,7 +260,16 @@ export class FinancingService {
     if (!g) throw new Error("Garantia não encontrada");
 
     raw.guarantees = raw.guarantees.filter((item) => item.id !== guaranteeId);
-    proposal.updatedAt = new Date().toISOString();
+    const now = new Date().toISOString();
+    const financing = raw.financingScenarios.find((item) => item.proposalId === proposalId);
+    if (financing) {
+      financing.status = "RASCUNHO";
+      financing.garantiasConfirmadas = false;
+      financing.concluidoEm = null;
+      financing.updatedAt = now;
+    }
+    proposal.updatedAt = now;
+    RevisionService.invalidateAfterFinancing(proposalId, actor);
 
     db.logAudit({
       userId: actor.id,
@@ -265,18 +292,17 @@ export class FinancingService {
     if (!proposal) throw new Error("Processo não encontrado");
 
     // Fluxo de Caixa must be CONCLUIDO
-    const fluxoStatus = (proposal as any).fluxoStatus;
-    if (fluxoStatus !== "CONCLUIDO") {
+    if (proposal.fluxoStatus !== "CONCLUIDO" || proposal.fluxoProjecaoConfirmada !== true) {
       throw new Error("A etapa anterior (Fluxo de Caixa) deve estar concluída antes de concluir o Financiamento");
     }
 
     const financing = raw.financingScenarios.find((f) => f.proposalId === proposalId);
     if (!financing) throw new Error("Cenário de financiamento não configurado");
+    if (!financing.garantiasConfirmadas) throw new Error("Confirme a situação das garantias antes de concluir");
+    if (!financing.cronogramaConfirmado) throw new Error("Confirme o cronograma financeiro antes de concluir");
 
     const now = new Date().toISOString();
     financing.status = "CONCLUIDO";
-    financing.garantiasConfirmadas = true;
-    financing.cronogramaConfirmado = true;
     financing.concluidoEm = now;
     financing.updatedAt = now;
     proposal.financiamentoRevisadoEm = now;

@@ -22,7 +22,7 @@ export class PatrimonyService {
       debts,
       totals,
       hasItems,
-      dividasConfirmadas: debts.length > 0 || (proposal as any).patrimonioDividasConfirmadas === true,
+      dividasConfirmadas: (proposal as any).patrimonioDividasConfirmadas === true,
       status: (proposal as any).patrimonioStatus || (hasItems ? "RASCUNHO" : "PENDENTE"),
     };
   }
@@ -61,6 +61,7 @@ export class PatrimonyService {
 
     raw.patrimonyItems.push(item);
     (proposal as any).patrimonioStatus = "RASCUNHO";
+    (proposal as any).patrimonioDividasConfirmadas = false;
     (proposal as any).patrimonioModificadoEm = now;
     proposal.updatedAt = now;
 
@@ -90,6 +91,7 @@ export class PatrimonyService {
     raw.patrimonyItems = raw.patrimonyItems.filter((i) => i.id !== itemId);
     const now = new Date().toISOString();
     (proposal as any).patrimonioStatus = "RASCUNHO";
+    (proposal as any).patrimonioDividasConfirmadas = false;
     (proposal as any).patrimonioModificadoEm = now;
     proposal.updatedAt = now;
 
@@ -138,6 +140,7 @@ export class PatrimonyService {
 
     raw.patrimonyDebts.push(debt);
     (proposal as any).patrimonioStatus = "RASCUNHO";
+    (proposal as any).patrimonioDividasConfirmadas = false;
     (proposal as any).patrimonioModificadoEm = now;
     proposal.updatedAt = now;
 
@@ -167,6 +170,7 @@ export class PatrimonyService {
     raw.patrimonyDebts = raw.patrimonyDebts.filter((d) => d.id !== debtId);
     const now = new Date().toISOString();
     (proposal as any).patrimonioStatus = "RASCUNHO";
+    (proposal as any).patrimonioDividasConfirmadas = false;
     (proposal as any).patrimonioModificadoEm = now;
     proposal.updatedAt = now;
 
@@ -194,6 +198,9 @@ export class PatrimonyService {
     if (items.length === 0) {
       throw new Error("Para concluir o levantamento, informe pelo menos 1 item patrimonial");
     }
+    if ((proposal as any).patrimonioDividasConfirmadas !== true) {
+      throw new Error("Confirme que a situação das dívidas foi revisada");
+    }
 
     const now = new Date().toISOString();
     (proposal as any).patrimonioStatus = "CONCLUIDO";
@@ -211,6 +218,29 @@ export class PatrimonyService {
       correlationId: crypto.randomUUID(),
     });
 
+    db.save();
+    return this.getByProposalId(proposalId);
+  }
+
+  static confirmDebts(proposalId: string, confirmed: boolean, actor: User) {
+    const raw = db.getRawData();
+    const proposal = raw.proposals.find((item) => item.id === proposalId);
+    if (!proposal) throw new Error("Processo não encontrado");
+    const now = new Date().toISOString();
+    (proposal as any).patrimonioDividasConfirmadas = confirmed;
+    (proposal as any).patrimonioStatus = "RASCUNHO";
+    (proposal as any).patrimonioModificadoEm = now;
+    proposal.updatedAt = now;
+    db.logAudit({
+      userId: actor.id,
+      userName: actor.name,
+      userRole: actor.role || undefined,
+      acao: "patrimony.debts_review_confirmed",
+      entidade: "Proposal",
+      entityId: proposalId,
+      correlationId: crypto.randomUUID(),
+      after: { confirmed },
+    });
     db.save();
     return this.getByProposalId(proposalId);
   }

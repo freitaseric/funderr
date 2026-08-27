@@ -1,6 +1,7 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "bun:test";
 import {
   calculateBeneficiaryCompleteness,
+  calculatePropertyCompleteness,
   calculatePatrimonyTotals,
   consolidateCashFlow,
   calculateFinancingSchedule,
@@ -11,6 +12,7 @@ import {
   validateCoordinates,
 } from "../src/domain/calculations";
 import { CashFlowItem, PatrimonyDebt, PatrimonyItem, Proposal } from "../src/domain/types";
+import { beneficiarySchema, cashFlowItemSchema, financingScenarioSchema, guaranteeSchema, identificationSchema, propertySchema } from "../src/domain/validation";
 
 describe("Domain Validation & Calculations", () => {
   it("validates CPF correctly with official check digits", () => {
@@ -40,29 +42,133 @@ describe("Domain Validation & Calculations", () => {
     expect(validateCoordinates(2.8235, null).valid).toBe(false);
     expect(validateCoordinates(null, -60.6758).valid).toBe(false);
     expect(validateCoordinates(100, -60).valid).toBe(false);
+    expect(validateCoordinates(0, -60).valid).toBe(true);
   });
 
   it("calculates beneficiary completeness percentage and detects spouse requirements", () => {
-    const b1 = {
+    const completeBeneficiary = {
       nome: "João da Silva",
       cpf: "52998224725",
+      rg: "123456 SSP/RR",
       telefone: "95991234567",
+      endereco: "Vicinal 1, lote 10",
+      nacionalidade: "Brasileira",
+      naturalidade: "Boa Vista/RR",
+      dataNascimento: "1980-01-01",
       estadoCivil: "SOLTEIRO",
+      escolaridade: "MEDIO_COMPLETO",
+      profissao: "Produtor rural",
+      dependentes: 0,
+      references: [
+        {
+          id: "ref-1",
+          beneficiaryId: "ben-1",
+          ordem: 1,
+          nome: "Maria da Silva",
+          telefone: "95990000000",
+          createdAt: "",
+          updatedAt: "",
+        },
+      ],
     };
-    const comp1 = calculateBeneficiaryCompleteness(b1);
-    expect(comp1.percent).toBeGreaterThan(60);
+    const complete = calculateBeneficiaryCompleteness(completeBeneficiary);
+    expect(complete.percent).toBe(100);
+    expect(complete.pendencias).toHaveLength(0);
 
-    const b2 = {
+    const marriedDraft = {
       nome: "Maria Santos",
       cpf: "52998224725",
       telefone: "95991234567",
       estadoCivil: "CASADO",
       conjugeNome: "",
     };
-    const comp2 = calculateBeneficiaryCompleteness(b2);
-    expect(comp2.pendencias).toContain(
-      "Nome do cônjuge obrigatório para estado civil casado/união estável"
-    );
+    const draft = calculateBeneficiaryCompleteness(marriedDraft);
+    expect(draft.percent).toBeLessThan(100);
+    expect(draft.pendencias).toContain("Nome do cônjuge não informado");
+    expect(draft.pendencias).toContain("RG do cônjuge não informado");
+  });
+
+  it("accepts identifiable beneficiary and property drafts without marking them complete", () => {
+    expect(beneficiarySchema.safeParse({ nome: "Rascunho Rural" }).success).toBe(true);
+    expect(
+      propertySchema.safeParse({ beneficiaryId: "ben-1", denominacao: "Sítio em cadastro" }).success
+    ).toBe(true);
+
+    const property = calculatePropertyCompleteness({
+      beneficiaryId: "ben-1",
+      denominacao: "Sítio em cadastro",
+    });
+    expect(property.percent).toBeLessThan(100);
+    expect(property.pendencias).toContain("Localização ou roteiro de acesso não informado");
+  });
+
+  it("validates the four employment categories and seven-year cash-flow input", () => {
+    const identification = identificationSchema.safeParse({
+      jobs: [
+        { categoria: "ADMINISTRATIVOS", faseAtual: 1, faseExpansao: 0 },
+        { categoria: "TECNICOS", faseAtual: 0, faseExpansao: 1 },
+        { categoria: "PRODUTIVOS", faseAtual: 2, faseExpansao: 3 },
+        { categoria: "OUTROS", faseAtual: 0, faseExpansao: 0 },
+      ],
+      usesSources: [
+        { tipo: "USO", categoria: "Máquinas", realizado: 10000, aRealizar: 40000 },
+        { tipo: "FONTE", categoria: "Financiamento", realizado: 0, aRealizar: 50000 },
+      ],
+    });
+    expect(identification.success).toBe(true);
+
+    const duplicatedJobs = identificationSchema.safeParse({
+      jobs: Array.from({ length: 4 }, () => ({
+        categoria: "PRODUTIVOS",
+        faseAtual: 0,
+        faseExpansao: 0,
+      })),
+    });
+    expect(duplicatedJobs.success).toBe(false);
+
+    expect(
+      cashFlowItemSchema.safeParse({
+        tipo: "RECEITA",
+        descricao: "Venda de mandioca",
+        unidade: "kg",
+        quantidade: 100,
+        valorUnitario: 20,
+        ano2: 2200,
+        ano3: 2400,
+        ano4: 2600,
+        ano5: 2800,
+        ano6: 3000,
+        ano7: 3200,
+      }).success
+    ).toBe(true);
+  });
+
+  it("validates financing grace period and type-specific guarantees", () => {
+    expect(
+      financingScenarioSchema.safeParse({
+        linhaCreditoId: "line-1",
+        valorProposta: 50000,
+        percentualFinanciavel: 80,
+        percentualAter: 2.5,
+        taxaJurosAnual: 3,
+        prazoTotalAnos: 5,
+        carenciaAnos: 5,
+        jurosCarencia: "PAGAR",
+      }).success
+    ).toBe(false);
+
+    expect(
+      guaranteeSchema.safeParse({
+        tipo: "AVAL_PESSOAL",
+        descricao: "Aval pessoal",
+        garantidorNome: "Maria Avalista",
+        garantidorCpf: "52998224725",
+        garantidorTelefone: "95991234567",
+      }).success
+    ).toBe(true);
+    expect(
+      guaranteeSchema.safeParse({ tipo: "AVAL_PESSOAL", descricao: "Aval sem identificação" }).success
+    ).toBe(false);
   });
 
   it("calculates Patrimônio totals and excludes OUTROS_BENS_URBANOS from rural gross worth", () => {

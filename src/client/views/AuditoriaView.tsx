@@ -13,7 +13,7 @@ export const AuditoriaView: React.FC<AuditoriaViewProps> = ({ logs }) => {
   const filtered = logs.filter((l) => {
     const matchesSearch =
       l.acao.toLowerCase().includes(search.toLowerCase()) ||
-      l.userName.toLowerCase().includes(search.toLowerCase()) ||
+      (l.userName || "").toLowerCase().includes(search.toLowerCase()) ||
       l.entidade.toLowerCase().includes(search.toLowerCase());
     const matchesEntity = !filterEntity || l.entidade === filterEntity;
     return matchesSearch && matchesEntity;

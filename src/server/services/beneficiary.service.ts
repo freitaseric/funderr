@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { db } from "../db/database";
 import { Beneficiary, BeneficiaryReference, User } from "../../domain/types";
 import { calculateBeneficiaryCompleteness, formatCPF, formatPhone, validateCPF } from "../../domain/calculations";
+import { RevisionService } from "./revision.service";
 
 export class BeneficiaryService {
   static list(): (Beneficiary & { percentualCompletude: number; totalPropriedades: number })[] {
@@ -9,11 +10,12 @@ export class BeneficiaryService {
     return raw.beneficiaries.map((b) => {
       const refs = raw.beneficiaryReferences.filter((r) => r.beneficiaryId === b.id);
       const props = raw.properties.filter((p) => p.beneficiaryId === b.id);
-      const { percent } = calculateBeneficiaryCompleteness(b);
+      const { percent, pendencias } = calculateBeneficiaryCompleteness({ ...b, references: refs });
       return {
         ...b,
         references: refs,
         percentualCompletude: percent,
+        pendencias,
         totalPropriedades: props.length,
       };
     });
@@ -24,7 +26,7 @@ export class BeneficiaryService {
     const b = raw.beneficiaries.find((item) => item.id === id);
     if (!b) return null;
     const refs = raw.beneficiaryReferences.filter((r) => r.beneficiaryId === b.id);
-    const { percent, pendencias } = calculateBeneficiaryCompleteness(b);
+    const { percent, pendencias } = calculateBeneficiaryCompleteness({ ...b, references: refs });
     return {
       ...b,
       references: refs,
@@ -43,14 +45,16 @@ export class BeneficiaryService {
 
     // Normalize CPF
     const normalizedCpf = data.cpf ? data.cpf.replace(/\D/g, "") : "";
-    if (!normalizedCpf || !validateCPF(normalizedCpf)) {
-      throw new Error("CPF inválido ou não informado");
+    if (normalizedCpf && !validateCPF(normalizedCpf)) {
+      throw new Error("CPF inválido");
     }
 
     // Check unique CPF
-    const existingCpf = raw.beneficiaries.find(
-      (b) => b.id !== id && b.cpf.replace(/\D/g, "") === normalizedCpf
-    );
+    const existingCpf = normalizedCpf
+      ? raw.beneficiaries.find(
+          (b) => b.id !== id && b.cpf.replace(/\D/g, "") === normalizedCpf
+        )
+      : undefined;
     if (existingCpf) {
       throw new Error("Já existe um beneficiário cadastrado com este CPF");
     }
@@ -65,9 +69,9 @@ export class BeneficiaryService {
         cpf: normalizedCpf,
         telefone: data.telefone ? data.telefone.replace(/\D/g, "") : "",
         apelido: data.apelido?.trim(),
-        nacionalidade: data.nacionalidade || "Brasileira",
+        nacionalidade: data.nacionalidade || "",
         naturalidade: data.naturalidade?.trim(),
-        estadoCivil: data.estadoCivil || "SOLTEIRO",
+        estadoCivil: data.estadoCivil || "",
         dataNascimento: data.dataNascimento,
         profissao: data.profissao?.trim(),
         rg: data.rg?.trim(),
@@ -89,11 +93,13 @@ export class BeneficiaryService {
         ...existing,
         ...data,
         cpf: normalizedCpf,
-        telefone: data.telefone ? data.telefone.replace(/\D/g, "") : existing.telefone,
+        telefone:
+          data.telefone !== undefined ? data.telefone.replace(/\D/g, "") : existing.telefone,
         updatedAt: now,
       };
       const idx = raw.beneficiaries.findIndex((b) => b.id === id);
       raw.beneficiaries[idx] = beneficiary;
+      RevisionService.invalidateByBeneficiary(id, actor);
 
       db.logAudit({
         userId: actor.id,

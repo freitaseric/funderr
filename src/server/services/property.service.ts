@@ -6,9 +6,10 @@ import {
   isValidRoraimaMunicipality,
   validateCoordinates,
 } from "../../domain/calculations";
+import { RevisionService } from "./revision.service";
 
 export class PropertyService {
-  static list(beneficiaryId?: string): (Property & { percentualCompletude: number })[] {
+  static list(beneficiaryId?: string): (Property & { percentualCompletude: number; pendencias: string[] })[] {
     const raw = db.getRawData();
     let list = raw.properties;
     if (beneficiaryId) {
@@ -16,11 +17,12 @@ export class PropertyService {
     }
     return list.map((p) => {
       const b = raw.beneficiaries.find((item) => item.id === p.beneficiaryId);
-      const { percent } = calculatePropertyCompleteness(p);
+      const { percent, pendencias } = calculatePropertyCompleteness(p);
       return {
         ...p,
         beneficiaryNome: b?.nome || "Beneficiário não localizado",
         percentualCompletude: percent,
+        pendencias,
       };
     });
   }
@@ -50,7 +52,7 @@ export class PropertyService {
     if (!ben) throw new Error("Beneficiário informado não existe");
 
     // Validate municipality is in Roraima
-    if (!data.municipio || !isValidRoraimaMunicipality(data.municipio)) {
+    if (data.municipio && !isValidRoraimaMunicipality(data.municipio)) {
       throw new Error("Município deve ser um dos 15 municípios oficiais do Estado de Roraima");
     }
 
@@ -69,15 +71,15 @@ export class PropertyService {
         beneficiaryId: data.beneficiaryId,
         denominacao: data.denominacao?.trim() || "",
         endereco: data.endereco?.trim() || "",
-        municipio: data.municipio,
+        municipio: data.municipio || "",
         estado: "RR",
         areaTotal: Number(data.areaTotal || 0),
         areaDisponivel: data.areaDisponivel !== undefined ? Number(data.areaDisponivel) : undefined,
         areaLegal: data.areaLegal !== undefined ? Number(data.areaLegal) : undefined,
-        formaOcupacao: data.formaOcupacao?.trim() || "Proprietário",
+        formaOcupacao: data.formaOcupacao?.trim() || "",
         tempoExploracao: data.tempoExploracao?.trim(),
         modulo: data.modulo?.trim(),
-        documentoExistente: data.documentoExistente?.trim() || "Título definitivo",
+        documentoExistente: data.documentoExistente?.trim() || "",
         latitude: data.latitude ?? null,
         longitude: data.longitude ?? null,
         placeId: data.placeId?.trim(),
@@ -119,6 +121,7 @@ export class PropertyService {
       };
       const idx = raw.properties.findIndex((p) => p.id === id);
       raw.properties[idx] = property;
+      RevisionService.invalidateByProperty(id, actor);
 
       db.logAudit({
         userId: actor.id,

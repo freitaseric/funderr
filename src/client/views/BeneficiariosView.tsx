@@ -7,7 +7,7 @@ import { useAuth } from "../context/AuthContext";
 import { Plus, Search, User, Phone, MapPin, CheckCircle2, AlertCircle, Trash2, Edit } from "lucide-react";
 
 interface BeneficiariosViewProps {
-  beneficiaries: (Beneficiary & { percentualCompletude?: number; totalPropriedades?: number })[];
+  beneficiaries: (Beneficiary & { percentualCompletude?: number; totalPropriedades?: number; pendencias?: string[] })[];
   onSave: (data: any) => Promise<void>;
 }
 
@@ -28,11 +28,11 @@ export const BeneficiariosView: React.FC<BeneficiariosViewProps> = ({
     apelido: "",
     nacionalidade: "Brasileira",
     naturalidade: "",
-    estadoCivil: "SOLTEIRO" as MaritalStatus,
+    estadoCivil: "" as MaritalStatus | "",
     dataNascimento: "",
     profissao: "",
     rg: "",
-    escolaridade: "MEDIO_COMPLETO",
+    escolaridade: "",
     endereco: "",
     dependentes: 0,
     conjugeNome: "",
@@ -53,13 +53,13 @@ export const BeneficiariosView: React.FC<BeneficiariosViewProps> = ({
       cpf: "",
       telefone: "",
       apelido: "",
-      nacionalidade: "Brasileira",
+      nacionalidade: "",
       naturalidade: "",
-      estadoCivil: "SOLTEIRO",
+      estadoCivil: "",
       dataNascimento: "",
-      profissao: "Agricultor Familiar",
+      profissao: "",
       rg: "",
-      escolaridade: "MEDIO_COMPLETO",
+      escolaridade: "",
       endereco: "",
       dependentes: 0,
       conjugeNome: "",
@@ -81,13 +81,13 @@ export const BeneficiariosView: React.FC<BeneficiariosViewProps> = ({
       cpf: formatCPF(b.cpf),
       telefone: formatPhone(b.telefone),
       apelido: b.apelido || "",
-      nacionalidade: b.nacionalidade || "Brasileira",
+      nacionalidade: b.nacionalidade || "",
       naturalidade: b.naturalidade || "",
-      estadoCivil: (b.estadoCivil as MaritalStatus) || "SOLTEIRO",
+      estadoCivil: (b.estadoCivil as MaritalStatus) || "",
       dataNascimento: b.dataNascimento || "",
       profissao: b.profissao || "",
       rg: b.rg || "",
-      escolaridade: b.escolaridade || "MEDIO_COMPLETO",
+      escolaridade: b.escolaridade || "",
       endereco: b.endereco || "",
       dependentes: b.dependentes || 0,
       conjugeNome: b.conjugeNome || "",
@@ -109,16 +109,12 @@ export const BeneficiariosView: React.FC<BeneficiariosViewProps> = ({
     setFormError("");
 
     const cleanCpf = formData.cpf.replace(/\D/g, "");
-    if (!validateCPF(cleanCpf)) {
+    if (cleanCpf && !validateCPF(cleanCpf)) {
       setFormError("CPF do beneficiário inválido pelo algoritmo oficial.");
       return;
     }
 
     if (formData.estadoCivil === "CASADO" || formData.estadoCivil === "UNIAO_ESTAVEL") {
-      if (!formData.conjugeNome.trim()) {
-        setFormError("Nome do cônjuge é obrigatório para estado civil Casado ou União Estável.");
-        return;
-      }
       if (formData.conjugeCpf) {
         const cleanConjCpf = formData.conjugeCpf.replace(/\D/g, "");
         if (!validateCPF(cleanConjCpf)) {
@@ -219,11 +215,11 @@ export const BeneficiariosView: React.FC<BeneficiariosViewProps> = ({
                       <div className="font-semibold text-slate-900">{b.nome}</div>
                       {b.apelido && <div className="text-xs text-slate-400">"{b.apelido}"</div>}
                     </td>
-                    <td className="px-6 py-3.5 font-mono text-xs font-medium text-slate-800">
-                      {formatCPF(b.cpf)}
+                  <td className="px-6 py-3.5 font-mono text-xs font-medium text-slate-800">
+                      {b.cpf ? formatCPF(b.cpf) : "Não informado"}
                     </td>
                     <td className="px-6 py-3.5 text-xs text-slate-600">
-                      {formatPhone(b.telefone)}
+                      {b.telefone ? formatPhone(b.telefone) : "Não informado"}
                     </td>
                     <td className="px-6 py-3.5 text-xs">
                       <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-mono text-[11px]">
@@ -245,7 +241,7 @@ export const BeneficiariosView: React.FC<BeneficiariosViewProps> = ({
                             style={{ width: `${b.percentualCompletude || 0}%` }}
                           />
                         </div>
-                        <span className="text-xs font-bold">{b.percentualCompletude || 0}%</span>
+                        <span className="text-xs font-bold" title={b.pendencias?.join("\n")}>{b.percentualCompletude || 0}%</span>
                       </div>
                     </td>
                     <td className="px-6 py-3.5 text-right">
@@ -269,7 +265,7 @@ export const BeneficiariosView: React.FC<BeneficiariosViewProps> = ({
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title={selectedBen ? "Editar Beneficiário" : "Novo Beneficiário"}
-        subtitle="Preencha os dados completos do titular e cônjuge para habilitação do crédito"
+        subtitle="Salve o rascunho agora e acompanhe as pendências até a habilitação final"
         maxWidth="4xl"
       >
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -309,7 +305,6 @@ export const BeneficiariosView: React.FC<BeneficiariosViewProps> = ({
                 <label className="block font-bold text-slate-700 mb-1">CPF (11 dígitos) *</label>
                 <input
                   type="text"
-                  required
                   placeholder="000.000.000-00"
                   value={formData.cpf}
                   onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
@@ -320,7 +315,6 @@ export const BeneficiariosView: React.FC<BeneficiariosViewProps> = ({
                 <label className="block font-bold text-slate-700 mb-1">Telefone / WhatsApp *</label>
                 <input
                   type="text"
-                  required
                   placeholder="(95) 99999-9999"
                   value={formData.telefone}
                   onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
@@ -334,6 +328,7 @@ export const BeneficiariosView: React.FC<BeneficiariosViewProps> = ({
                   onChange={(e) => setFormData({ ...formData, estadoCivil: e.target.value as any })}
                   className="w-full px-3 py-2 border border-slate-300 rounded-md outline-hidden focus:border-blue-600 bg-white"
                 >
+                  <option value="">Selecione</option>
                   <option value="SOLTEIRO">Solteiro(a)</option>
                   <option value="CASADO">Casado(a)</option>
                   <option value="UNIAO_ESTAVEL">União Estável</option>
@@ -348,6 +343,24 @@ export const BeneficiariosView: React.FC<BeneficiariosViewProps> = ({
                   type="date"
                   value={formData.dataNascimento}
                   onChange={(e) => setFormData({ ...formData, dataNascimento: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md outline-hidden focus:border-blue-600"
+                />
+              </div>
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Nacionalidade</label>
+                <input
+                  type="text"
+                  value={formData.nacionalidade}
+                  onChange={(e) => setFormData({ ...formData, nacionalidade: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md outline-hidden focus:border-blue-600"
+                />
+              </div>
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Naturalidade</label>
+                <input
+                  type="text"
+                  value={formData.naturalidade}
+                  onChange={(e) => setFormData({ ...formData, naturalidade: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-300 rounded-md outline-hidden focus:border-blue-600"
                 />
               </div>
@@ -368,6 +381,26 @@ export const BeneficiariosView: React.FC<BeneficiariosViewProps> = ({
                   onChange={(e) => setFormData({ ...formData, profissao: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-300 rounded-md outline-hidden focus:border-blue-600"
                 />
+              </div>
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Escolaridade</label>
+                <select
+                  value={formData.escolaridade}
+                  onChange={(e) => setFormData({ ...formData, escolaridade: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md bg-white"
+                >
+                  <option value="">Selecione</option>
+                  <option value="NAO_ALFABETIZADO">Não alfabetizado</option>
+                  <option value="ALFABETIZADO">Alfabetizado</option>
+                  <option value="FUNDAMENTAL_INCOMPLETO">Fundamental incompleto</option>
+                  <option value="FUNDAMENTAL_COMPLETO">Fundamental completo</option>
+                  <option value="MEDIO_INCOMPLETO">Médio incompleto</option>
+                  <option value="MEDIO_COMPLETO">Médio completo</option>
+                  <option value="TECNICO">Técnico</option>
+                  <option value="SUPERIOR_INCOMPLETO">Superior incompleto</option>
+                  <option value="SUPERIOR_COMPLETO">Superior completo</option>
+                  <option value="POS_GRADUACAO">Pós-graduação</option>
+                </select>
               </div>
               <div className="md:col-span-2">
                 <label className="block font-bold text-slate-700 mb-1">Endereço Residencial</label>
@@ -399,10 +432,9 @@ export const BeneficiariosView: React.FC<BeneficiariosViewProps> = ({
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
                 <div className="md:col-span-2">
-                  <label className="block font-bold text-slate-700 mb-1">Nome do Cônjuge *</label>
+                  <label className="block font-bold text-slate-700 mb-1">Nome do Cônjuge</label>
                   <input
                     type="text"
-                    required
                     value={formData.conjugeNome}
                     onChange={(e) => setFormData({ ...formData, conjugeNome: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-300 rounded-md outline-hidden focus:border-blue-600 bg-white"
@@ -416,6 +448,15 @@ export const BeneficiariosView: React.FC<BeneficiariosViewProps> = ({
                     value={formData.conjugeCpf}
                     onChange={(e) => setFormData({ ...formData, conjugeCpf: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-300 rounded-md outline-hidden focus:border-blue-600 bg-white font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">RG do Cônjuge</label>
+                  <input
+                    type="text"
+                    value={formData.conjugeRg}
+                    onChange={(e) => setFormData({ ...formData, conjugeRg: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-md bg-white"
                   />
                 </div>
               </div>
@@ -471,7 +512,7 @@ export const BeneficiariosView: React.FC<BeneficiariosViewProps> = ({
               disabled={saving}
               className="px-5 py-2 bg-[#1351b4] hover:bg-blue-700 text-white font-bold rounded-lg text-xs shadow-xs disabled:opacity-50"
             >
-              {saving ? "Salvando..." : selectedBen ? "Atualizar Beneficiário" : "Cadastrar Beneficiário"}
+              {saving ? "Salvando..." : "Salvar rascunho"}
             </button>
           </div>
         </form>

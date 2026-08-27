@@ -1,6 +1,6 @@
 import React from "react";
 import { ProposalDetailView } from "../../server/services/proposal.service";
-import { Beneficiary, Property, CreditLine } from "../../../domain/types";
+import { Beneficiary, Property, CreditLine } from "../../domain/types";
 import { StatusBadge } from "../components/ui/StatusBadge";
 import {
   FileSpreadsheet,

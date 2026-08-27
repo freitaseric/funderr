@@ -10,6 +10,7 @@ import { LinhasCreditoView } from "./views/LinhasCreditoView";
 import { DocumentosGeraisView } from "./views/DocumentosGeraisView";
 import { AuditoriaView } from "./views/AuditoriaView";
 import { ConfiguracoesView } from "./views/ConfiguracoesView";
+import { AuthView } from "./views/AuthView";
 import { fetchApi } from "./api";
 import { Beneficiary, CreditLine, Property, ProposalDocument, AuditLog } from "../domain/types";
 import { ProposalDetailView } from "../server/services/proposal.service";
@@ -221,9 +222,38 @@ const MainAppContent: React.FC = () => {
 export function App() {
   return (
     <AuthProvider>
-      <MainAppContent />
+      <AppGate />
     </AuthProvider>
   );
 }
+
+const AppGate: React.FC = () => {
+  const { user, loading, isPending, logout } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-100 flex items-center justify-center text-sm font-semibold text-slate-600">
+        Validando acesso com o Firebase...
+      </div>
+    );
+  }
+  if (!user) return <AuthView />;
+  if (isPending) {
+    return (
+      <main className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
+        <section className="max-w-md bg-white border rounded-2xl shadow-sm p-6 text-center space-y-3">
+          <h1 className="text-lg font-bold text-slate-900">Acesso aguardando aprovação</h1>
+          <p className="text-sm text-slate-600">
+            Sua identidade foi validada pelo Firebase, mas um administrador do FUNDERR ainda precisa atribuir seu perfil de acesso.
+          </p>
+          <button onClick={() => void logout()} className="px-4 py-2 bg-[#1351b4] text-white rounded-lg text-sm font-bold">
+            Sair
+          </button>
+        </section>
+      </main>
+    );
+  }
+  return <MainAppContent />;
+};
 
 export default App;

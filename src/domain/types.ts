@@ -140,11 +140,29 @@ export interface Proposal {
   createdAt: string;
   updatedAt: string;
 
+  patrimonioStatus?: StepStatus;
+  patrimonioDividasConfirmadas?: boolean;
+  patrimonioModificadoEm?: string | null;
+  fluxoStatus?: StepStatus;
+  fluxoProjecaoConfirmada?: boolean;
+  fluxoConcluidoEm?: string | null;
+  fluxoModificadoEm?: string | null;
+
   // Timestamps of cross-step reviews for cascade synchronization
   patrimonioRevisadoEm?: string | null;
   identificacaoRevisadaEm?: string | null;
   fluxoRevisadoEm?: string | null;
   financiamentoRevisadoEm?: string | null;
+}
+
+export interface ProposalStatusHistory {
+  id: string;
+  proposalId: string;
+  statusAnterior: Proposal["status"];
+  statusNovo: Proposal["status"];
+  motivo: string;
+  changedById: string;
+  changedAt: string;
 }
 
 export type PatrimonyCategory =
@@ -180,10 +198,16 @@ export interface PatrimonyDebt {
   updatedAt: string;
 }
 
+export type ProposalJobCategory =
+  | "ADMINISTRATIVOS"
+  | "TECNICOS"
+  | "PRODUTIVOS"
+  | "OUTROS";
+
 export interface ProposalJob {
   id: string;
   proposalId: string;
-  categoria: string;
+  categoria: ProposalJobCategory;
   faseAtual: number;
   faseExpansao: number;
   total: number;
@@ -196,7 +220,9 @@ export interface ProposalUseSource {
   proposalId: string;
   tipo: "USO" | "FONTE";
   categoria: string;
-  valor: number;
+  realizado: number;
+  aRealizar: number;
+  total: number;
   createdAt: string;
   updatedAt: string;
 }
