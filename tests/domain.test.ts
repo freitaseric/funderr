@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import {
   calculateBeneficiaryCompleteness,
   calculatePropertyCompleteness,
+  calculateProposalCompleteness,
   calculatePatrimonyTotals,
   consolidateCashFlow,
   calculateFinancingSchedule,
@@ -13,8 +14,33 @@ import {
 } from "../src/domain/calculations";
 import { CashFlowItem, PatrimonyDebt, PatrimonyItem, Proposal } from "../src/domain/types";
 import { beneficiarySchema, cashFlowItemSchema, financingScenarioSchema, guaranteeSchema, identificationSchema, propertySchema } from "../src/domain/validation";
+import { assertGoogleIdentity } from "../src/server/services/auth.service";
 
 describe("Domain Validation & Calculations", () => {
+  it("accepts only verified Google identities", () => {
+    expect(() =>
+      assertGoogleIdentity({
+        email: "tecnico@gmail.com",
+        email_verified: true,
+        firebase: { identities: {}, sign_in_provider: "google.com" },
+      })
+    ).not.toThrow();
+    expect(() =>
+      assertGoogleIdentity({
+        email: "tecnico@gmail.com",
+        email_verified: true,
+        firebase: { identities: {}, sign_in_provider: "password" },
+      })
+    ).toThrow("exclusivamente uma Conta Google");
+    expect(() =>
+      assertGoogleIdentity({
+        email: "tecnico@gmail.com",
+        email_verified: false,
+        firebase: { identities: {}, sign_in_provider: "google.com" },
+      })
+    ).toThrow("e-mail verificado");
+  });
+
   it("validates CPF correctly with official check digits", () => {
     // Valid test CPFs
     expect(validateCPF("52998224725")).toBe(true);
@@ -100,6 +126,28 @@ describe("Domain Validation & Calculations", () => {
     });
     expect(property.percent).toBeLessThan(100);
     expect(property.pendencias).toContain("Localização ou roteiro de acesso não informado");
+  });
+
+  it("calculates Dados Gerais completeness instead of assuming it is complete", () => {
+    const complete = calculateProposalCompleteness({
+      numero: "2026-0001",
+      beneficiaryId: "ben-1",
+      propertyId: "property-1",
+      data: "2026-08-27",
+      atividade: "Pecuária leiteira",
+    });
+    expect(complete).toEqual({ percent: 100, pendencias: [] });
+
+    const legacyDraft = calculateProposalCompleteness({
+      numero: "2026-0002",
+      beneficiaryId: "ben-1",
+      propertyId: "property-1",
+      data: "27/08/2026",
+      atividade: "",
+    });
+    expect(legacyDraft.percent).toBe(60);
+    expect(legacyDraft.pendencias).toContain("Data de formalização inválida ou não informada");
+    expect(legacyDraft.pendencias).toContain("Atividade produtiva não informada");
   });
 
   it("validates the four employment categories and seven-year cash-flow input", () => {

@@ -17,11 +17,18 @@ export const firebaseConfigReady = Boolean(
     firebaseConfig.appId
 );
 
-const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-export const firebaseAuth = getAuth(app);
+// Firebase Auth throws synchronously for an incomplete configuration. Keeping
+// it nullable allows the React application to mount and explain which
+// variables are missing instead of leaving an empty root element.
+const app = firebaseConfigReady
+  ? getApps().length > 0
+    ? getApp()
+    : initializeApp(firebaseConfig)
+  : null;
+export const firebaseAuth = app ? getAuth(app) : null;
 
 const emulatorHost = import.meta.env.VITE_FIREBASE_AUTH_EMULATOR_HOST;
-if (emulatorHost && !(globalThis as any).__FUNDERR_AUTH_EMULATOR_CONNECTED__) {
+if (firebaseAuth && emulatorHost && !(globalThis as any).__FUNDERR_AUTH_EMULATOR_CONNECTED__) {
   connectAuthEmulator(firebaseAuth, `http://${emulatorHost}`, { disableWarnings: true });
   (globalThis as any).__FUNDERR_AUTH_EMULATOR_CONNECTED__ = true;
 }

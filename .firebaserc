@@ -1,0 +1,6 @@
+{
+  "projects": {
+    "default": "funderr-dev",
+    "development": "funderr-dev"
+  }
+}

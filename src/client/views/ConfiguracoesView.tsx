@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Check, Shield, Sparkles, ToggleLeft, ToggleRight, UserPlus } from "lucide-react";
+import { Check, Shield, Sparkles, ToggleLeft, ToggleRight } from "lucide-react";
 import { RemoteConfigFlags, User, UserRole, UserStatus } from "../../domain/types";
 import { fetchApi } from "../api";
 import { useAuth } from "../context/AuthContext";
@@ -35,13 +35,6 @@ export const ConfiguracoesView: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
-  const [newUser, setNewUser] = useState({
-    name: "",
-    email: "",
-    password: "",
-    role: "TECNICO" as Exclude<UserRole, null>,
-    status: "ACTIVE" as UserStatus,
-  });
 
   const loadData = async () => {
     try {
@@ -70,21 +63,6 @@ export const ConfiguracoesView: React.FC = () => {
       });
       setFlags(response.config);
       setMessage("Configuração atualizada.");
-    } catch (err: any) {
-      setMessage(`Erro: ${err.message}`);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleCreateUser = async (event: React.FormEvent) => {
-    event.preventDefault();
-    try {
-      setSaving(true);
-      await fetchApi("/api/users", { method: "POST", body: JSON.stringify(newUser) });
-      setNewUser({ name: "", email: "", password: "", role: "TECNICO", status: "ACTIVE" });
-      await loadData();
-      setMessage("Usuário criado no Firebase Authentication.");
     } catch (err: any) {
       setMessage(`Erro: ${err.message}`);
     } finally {
@@ -151,13 +129,9 @@ export const ConfiguracoesView: React.FC = () => {
             <span className="text-xs text-slate-500 font-mono">{users.length} usuários</span>
           </div>
 
-          <form onSubmit={handleCreateUser} className="p-4 bg-slate-50 border rounded-xl grid grid-cols-1 md:grid-cols-5 gap-2">
-            <input required minLength={2} placeholder="Nome" value={newUser.name} onChange={(event) => setNewUser({ ...newUser, name: event.target.value })} className="input text-xs" />
-            <input required type="email" placeholder="E-mail" value={newUser.email} onChange={(event) => setNewUser({ ...newUser, email: event.target.value })} className="input text-xs" />
-            <input required type="password" minLength={10} placeholder="Senha inicial" value={newUser.password} onChange={(event) => setNewUser({ ...newUser, password: event.target.value })} className="input text-xs" />
-            <select value={newUser.role} onChange={(event) => setNewUser({ ...newUser, role: event.target.value as Exclude<UserRole, null> })} className="input text-xs">{assignableRoles.map((role) => <option key={role}>{role}</option>)}</select>
-            <button disabled={saving} className="bg-[#1351b4] text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1"><UserPlus className="w-4 h-4" /> Criar no Firebase</button>
-          </form>
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900">
+            Novos usuários entram primeiro com uma Conta Google e ficam pendentes. Um administrador atribui o papel e ativa o acesso nesta tabela.
+          </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">

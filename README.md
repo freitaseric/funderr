@@ -28,6 +28,17 @@ Transformar o sistema legado em uma aplicação web moderna, full-stack e versio
 
 Ela é a especificação executável do comportamento existente.
 
+## Desenvolvimento local
+
+1. Copie `.env.example` para `.env.local` e preencha a configuração pública do app Web Firebase.
+2. Defina `FIREBASE_PROJECT_ID` e `FUNDERR_BOOTSTRAP_EMAIL`.
+3. Autentique o backend sem chave permanente com `gcloud auth application-default login`.
+4. Execute `bun run dev`.
+
+O acesso ao FUNDERR é feito exclusivamente por Conta Google. No primeiro acesso, usuários ainda não aprovados são cadastrados como `PENDING`; um administrador atribui o papel e ativa a conta em Configurações. A senha Google nunca é recebida pelo FUNDERR.
+
+A configuração versionada de provedores está em `firebase.json`. Para publicá-la no projeto associado em `.firebaserc`, use `bunx firebase-tools deploy --only auth`.
+
 ## Como usar no Google AI Studio
 
 1. Crie um repositório GitHub novo para este conteúdo.

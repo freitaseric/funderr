@@ -101,16 +101,6 @@ apiRouter.get("/users", (req, res) => {
   }
 });
 
-apiRouter.post("/users", async (req, res) => {
-  try {
-    const actor = requireRoles(req, ["ADMIN"]);
-    const user = await AuthService.createUser(req.body, actor);
-    res.status(201).json({ user });
-  } catch (err: any) {
-    res.status(400).json({ error: err.message });
-  }
-});
-
 apiRouter.patch("/users/:id/role", async (req, res) => {
   try {
     const actor = requireRoles(req, ["ADMIN"]);
@@ -207,6 +197,15 @@ apiRouter.get("/proposals/:id", (req, res) => {
     res.json(p);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+apiRouter.get("/proposals/:id/status-history", (req, res) => {
+  try {
+    const history = ProposalService.getStatusHistory(req.params.id);
+    res.json({ history });
+  } catch (err: any) {
+    res.status(404).json({ error: err.message });
   }
 });
 

@@ -1,6 +1,6 @@
 # FUNDERR — pendências de implementação
 
-Atualizado em: 26 de agosto de 2026
+Atualizado em: 27 de agosto de 2026
 
 Este documento registra o trabalho que ainda falta para o sistema refletir integralmente a visão descrita em `FUNDERR-visao-funcional.md` e substituir de forma segura a planilha `PLANILHA - FUNDER 3.0 (2024) nova Lei - Copia.zip`.
 
@@ -8,7 +8,7 @@ Este documento registra o trabalho que ainda falta para o sistema refletir integ
 
 Já estão implementados no código:
 
-- autenticação com Firebase Authentication e perfis `ADMIN`, `GESTOR`, `TECNICO` e `CONSULTA`;
+- autenticação exclusiva por Conta Google com Firebase Authentication e perfis `ADMIN`, `GESTOR`, `TECNICO` e `CONSULTA`;
 - bootstrap controlado do primeiro administrador;
 - cadastros de beneficiário e propriedade como rascunhos, com cálculo detalhado de completude;
 - patrimônio com itens, dívidas e confirmação explícita da revisão das dívidas;
@@ -17,25 +17,31 @@ Já estão implementados no código:
 - fluxo de caixa de sete anos, com Ano 1 calculado por quantidade × valor unitário;
 - financiamento SAC, carência, capacidade de pagamento, garantias e confirmações explícitas;
 - máquina de estados do processo e revisão em cascata;
+- etapa de Dados Gerais com completude calculada e pendências nominais;
+- histórico visual das decisões e transições de status do processo;
 - anexação local e confirmação humana de documentos;
 - validação TypeScript, testes de domínio e build de produção.
 
-Esses itens estão implementados localmente, mas a autenticação ainda precisa ser validada contra um projeto Firebase real.
+O Firebase Authentication está configurado no projeto de desenvolvimento `funderr-dev`, com Conta Google como único provedor aceito pelo cliente e pelo backend.
 
 ## 2. Prioridade imediata — colocar a infraestrutura real em funcionamento
 
 ### 2.1. Configurar e validar o Firebase Authentication
 
+Situação atual:
+
+- projeto `funderr-dev` e app Web de desenvolvimento configurados;
+- login exclusivo por Conta Google, com E-mail/Senha desativado;
+- credenciais locais por Application Default Credentials, sem chave permanente de conta de serviço;
+- primeiro administrador criado com claims `ADMIN` e `ACTIVE`;
+- acesso sem token, usuário pendente, perfis e revogação de token validados contra o projeto real.
+
 Falta:
 
-- definir o projeto Google/Firebase definitivo;
-- habilitar o provedor E-mail/Senha;
-- preencher as variáveis `VITE_FIREBASE_*`, `FIREBASE_PROJECT_ID` e `FUNDERR_BOOTSTRAP_EMAIL`;
-- configurar credenciais do backend por Application Default Credentials ou conta de serviço;
-- executar o bootstrap do primeiro administrador;
-- validar login, logout, renovação/revogação de token e criação de usuários;
-- validar as custom claims `role` e `status` em ambiente real;
-- testar todos os perfis de acesso contra as rotas protegidas.
+- definir os projetos separados de homologação e produção;
+- restringir e revisar os domínios autorizados antes da implantação;
+- validar o fluxo completo de aprovação de novos usuários pela interface;
+- configurar orçamento e alertas para o projeto com faturamento.
 
 Critério de aceite:
 
@@ -200,7 +206,6 @@ Falta:
 
 - definir quem pode enviar para análise, devolver, aprovar, recusar e concluir;
 - definir pareceres e justificativas obrigatórias por transição;
-- criar histórico visual das decisões;
 - decidir se aprovação requer dupla conferência ou assinatura;
 - bloquear alterações diretas em processo formalizado, usando nova revisão ou versão.
 
@@ -208,7 +213,6 @@ Falta:
 
 Falta:
 
-- transformar Dados Gerais em etapa validada, em vez de tratá-la sempre como 100%;
 - definir campos obrigatórios adicionais, responsáveis e unidade administrativa;
 - revisar pesos do percentual global — hoje as oito etapas têm o mesmo peso;
 - definir tratamento de processos legados incompletos.

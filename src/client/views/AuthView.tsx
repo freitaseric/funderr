@@ -1,22 +1,17 @@
-import React, { FormEvent, useState } from "react";
+import React, { useState } from "react";
 import { LockKeyhole, ShieldCheck } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
 export const AuthView: React.FC = () => {
-  const { setupRequired, bootstrapEnabled, firebaseConfigured, login, bootstrap } = useAuth();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const { setupRequired, bootstrapEnabled, firebaseConfigured, loginWithGoogle } = useAuth();
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const handleSubmit = async (event: FormEvent) => {
-    event.preventDefault();
+  const handleGoogleLogin = async () => {
     setError("");
     setSaving(true);
     try {
-      if (setupRequired) await bootstrap({ name, email, password });
-      else await login({ email, password });
+      await loginWithGoogle();
     } catch (err: any) {
       setError(err.message || "Não foi possível acessar o sistema");
     } finally {
@@ -39,15 +34,15 @@ export const AuthView: React.FC = () => {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <div className="p-6 space-y-4">
           <div>
             <h2 className="font-bold text-slate-900">
               {setupRequired ? "Configuração inicial" : "Acesso ao sistema"}
             </h2>
             <p className="text-xs text-slate-500 mt-1">
               {setupRequired
-                ? "Cadastre o primeiro administrador. Nenhum dado demonstrativo será criado."
-                : "Informe suas credenciais para iniciar uma sessão segura."}
+                ? "Entre com a conta Google autorizada para criar o primeiro administrador."
+                : "Use sua conta Google para iniciar uma sessão segura."}
             </p>
           </div>
 
@@ -65,52 +60,19 @@ export const AuthView: React.FC = () => {
             </div>
           )}
 
-          {setupRequired && (
-            <label className="block text-xs font-bold text-slate-700">
-              Nome completo
-              <input
-                required
-                minLength={2}
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                className="mt-1 w-full px-3 py-2.5 border border-slate-300 rounded-lg font-normal"
-              />
-            </label>
-          )}
-
-          <label className="block text-xs font-bold text-slate-700">
-            E-mail
-            <input
-              required
-              type="email"
-              autoComplete="username"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              className="mt-1 w-full px-3 py-2.5 border border-slate-300 rounded-lg font-normal"
-            />
-          </label>
-
-          <label className="block text-xs font-bold text-slate-700">
-            Senha
-            <input
-              required
-              minLength={10}
-              type="password"
-              autoComplete={setupRequired ? "new-password" : "current-password"}
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              className="mt-1 w-full px-3 py-2.5 border border-slate-300 rounded-lg font-normal"
-            />
-          </label>
-
           <button
-            type="submit"
+            type="button"
+            onClick={() => void handleGoogleLogin()}
             disabled={saving || !firebaseConfigured || (setupRequired && !bootstrapEnabled)}
-            className="w-full bg-[#1351b4] hover:bg-blue-700 text-white font-bold rounded-lg py-2.5 text-sm disabled:opacity-50"
+            className="w-full bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-bold rounded-lg py-2.5 text-sm disabled:opacity-50 flex items-center justify-center gap-3"
           >
-            {saving ? "Processando..." : setupRequired ? "Criar administrador no Firebase" : "Entrar com Firebase"}
+            <span className="text-lg font-black text-[#4285f4]">G</span>
+            {saving ? "Conectando..." : setupRequired ? "Configurar com Google" : "Entrar com Google"}
           </button>
-        </form>
+          <p className="text-[11px] text-center text-slate-500">
+            O FUNDERR não recebe nem armazena sua senha da Conta Google.
+          </p>
+        </div>
       </section>
     </main>
   );

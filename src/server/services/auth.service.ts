@@ -25,6 +25,17 @@ function nameFromToken(token: DecodedIdToken): string {
   return token.name?.trim() || token.email?.split("@")[0] || "Usuário FUNDERR";
 }
 
+export function assertGoogleIdentity(
+  token: Pick<DecodedIdToken, "email" | "email_verified" | "firebase">
+): void {
+  if (token.firebase?.sign_in_provider !== "google.com") {
+    throw new Error("Use exclusivamente uma Conta Google para acessar o FUNDERR");
+  }
+  if (!token.email || token.email_verified !== true) {
+    throw new Error("A Conta Google deve possuir um e-mail verificado");
+  }
+}
+
 async function setAccessClaims(uid: string, role: UserRole, status: UserStatus): Promise<void> {
   const auth = getFirebaseAdminAuth();
   const firebaseUser = await auth.getUser(uid);
@@ -45,7 +56,7 @@ export class AuthService {
 
   static async bootstrapAdmin(
     headers: Record<string, string | string[] | undefined>,
-    name?: string
+    _name?: string
   ): Promise<User> {
     const token = await this.verifyToken(headers);
     const allowedEmail = normalizeEmail(process.env.FUNDERR_BOOTSTRAP_EMAIL || "");
@@ -64,7 +75,7 @@ export class AuthService {
     const user: User = {
       id: token.uid,
       email: tokenEmail,
-      name: name?.trim() || nameFromToken(token),
+      name: nameFromToken(token),
       role: "ADMIN",
       status: "ACTIVE",
       createdAt: now,
@@ -128,56 +139,6 @@ export class AuthService {
     return db.getRawData().users;
   }
 
-  static async createUser(
-    data: { name: string; email: string; password: string; role: UserRole; status?: UserStatus },
-    actor: User
-  ): Promise<User> {
-    if (actor.role !== "ADMIN") throw new Error("Apenas administradores podem criar usuários");
-    if (data.name?.trim().length < 2) throw new Error("Nome deve ter pelo menos 2 caracteres");
-    if (!/^\S+@\S+\.\S+$/.test(data.email || "")) throw new Error("E-mail inválido");
-    if ((data.password || "").length < 10) throw new Error("A senha deve ter pelo menos 10 caracteres");
-    if (!data.role || !VALID_ROLES.has(data.role)) throw new Error("Papel de usuário inválido");
-
-    const auth = getFirebaseAdminAuth();
-    const firebaseUser = await auth.createUser({
-      email: normalizeEmail(data.email),
-      password: data.password,
-      displayName: data.name.trim(),
-      disabled: data.status === "DISABLED",
-    });
-
-    const now = new Date().toISOString();
-    const user: User = {
-      id: firebaseUser.uid,
-      email: normalizeEmail(data.email),
-      name: data.name.trim(),
-      role: data.role,
-      status: data.status || "ACTIVE",
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    try {
-      await setAccessClaims(user.id, user.role, user.status);
-      db.getRawData().users.push(user);
-      db.logAudit({
-        userId: actor.id,
-        userName: actor.name,
-        userRole: actor.role || undefined,
-        acao: "user.created",
-        entidade: "User",
-        entityId: user.id,
-        correlationId: crypto.randomUUID(),
-        after: user,
-      });
-      db.save();
-      return user;
-    } catch (error) {
-      await auth.deleteUser(firebaseUser.uid);
-      throw error;
-    }
-  }
-
   static async updateUserRole(
     userId: string,
     role: UserRole,
@@ -233,9 +194,11 @@ export class AuthService {
   ): Promise<DecodedIdToken> {
     const token = getBearerToken(headers);
     try {
-      return await getFirebaseAdminAuth().verifyIdToken(token, true);
+      const decoded = await getFirebaseAdminAuth().verifyIdToken(token, true);
+      assertGoogleIdentity(decoded);
+      return decoded;
     } catch {
-      throw new Error("Token de autenticação do Firebase inválido ou expirado");
+      throw new Error("Token inválido, expirado ou não emitido por uma Conta Google");
     }
   }
 }

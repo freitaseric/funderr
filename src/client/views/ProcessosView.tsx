@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ProposalDetailView } from "../../server/services/proposal.service";
+import { ProposalDetailView, ProposalStatusHistoryView } from "../../server/services/proposal.service";
 import {
   Beneficiary,
   Property,
@@ -41,6 +41,7 @@ import {
   ExternalLink,
   DollarSign,
   TrendingUp,
+  History,
 } from "lucide-react";
 
 interface ProcessosViewProps {
@@ -117,6 +118,7 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
   const [cashFlowData, setCashFlowData] = useState<any>(null);
   const [financingData, setFinancingData] = useState<FinancingStepData | null>(null);
   const [documentsData, setDocumentsData] = useState<ProposalDocument[]>([]);
+  const [statusHistory, setStatusHistory] = useState<ProposalStatusHistoryView[]>([]);
   const [loadingStep, setLoadingStep] = useState(false);
   const [stepActionError, setStepActionError] = useState("");
 
@@ -199,6 +201,25 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
       loadAllStepData(selectedProposalId);
     }
   }, [selectedProposalId, activeStep]);
+
+  useEffect(() => {
+    if (!selectedProposalId) {
+      setStatusHistory([]);
+      return;
+    }
+    void loadStatusHistory(selectedProposalId);
+  }, [selectedProposalId]);
+
+  const loadStatusHistory = async (proposalId: string) => {
+    try {
+      const data = await fetchApi<{ history: ProposalStatusHistoryView[] }>(
+        `/api/proposals/${proposalId}/status-history`
+      );
+      setStatusHistory(data.history);
+    } catch (err: any) {
+      setStepActionError(err.message);
+    }
+  };
 
   const loadAllStepData = async (proposalId: string) => {
     try {
@@ -299,6 +320,7 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
         body: JSON.stringify({ status, reason: reason || "" }),
       });
       await onRefresh();
+      await loadStatusHistory(selectedProposalId);
     } catch (err: any) {
       setStepActionError(err.message);
     }
@@ -1181,6 +1203,40 @@ export const ProcessosView: React.FC<ProcessosViewProps> = ({
               >
                 Avançar para Beneficiário <ArrowRight className="w-4 h-4" />
               </button>
+            </div>
+            <div className="border-t border-slate-200 pt-5">
+              <div className="flex items-center gap-2 mb-4">
+                <History className="w-4 h-4 text-[#1351b4]" />
+                <h4 className="text-sm font-bold text-slate-900">Histórico de decisões</h4>
+              </div>
+              {statusHistory.length === 0 ? (
+                <p className="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-xl p-4">
+                  Nenhuma transição de status registrada neste processo.
+                </p>
+              ) : (
+                <ol className="relative border-l border-slate-200 ml-2 space-y-5">
+                  {statusHistory.map((entry) => (
+                    <li key={entry.id} className="ml-5 text-xs">
+                      <span className="absolute -left-1.5 mt-1 w-3 h-3 rounded-full bg-[#1351b4] ring-4 ring-white" />
+                      <div className="flex flex-wrap items-center gap-2">
+                        <StatusBadge status={entry.statusAnterior} size="sm" />
+                        <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
+                        <StatusBadge status={entry.statusNovo} size="sm" />
+                        <time className="text-slate-500">
+                          {new Intl.DateTimeFormat("pt-BR", {
+                            dateStyle: "short",
+                            timeStyle: "short",
+                          }).format(new Date(entry.changedAt))}
+                        </time>
+                      </div>
+                      <p className="mt-1.5 text-slate-700">
+                        {entry.motivo || "Sem justificativa registrada"}
+                      </p>
+                      <p className="mt-1 text-slate-500">Responsável: {entry.changedByName}</p>
+                    </li>
+                  ))}
+                </ol>
+              )}
             </div>
           </div>
         )}

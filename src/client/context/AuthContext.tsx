@@ -1,23 +1,13 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import {
-  createUserWithEmailAndPassword,
+  GoogleAuthProvider,
   onAuthStateChanged,
-  signInWithEmailAndPassword,
+  signInWithPopup,
   signOut,
-  updateProfile,
 } from "firebase/auth";
 import { User, UserRole } from "../../domain/types";
 import { fetchApi } from "../api";
 import { firebaseAuth, firebaseConfigReady } from "../lib/firebase";
-
-interface Credentials {
-  email: string;
-  password: string;
-}
-
-interface BootstrapData extends Credentials {
-  name: string;
-}
 
 interface AuthContextType {
   user: User | null;
@@ -32,8 +22,7 @@ interface AuthContextType {
   isConsulta: boolean;
   isPending: boolean;
   canEdit: boolean;
-  login: (credentials: Credentials) => Promise<void>;
-  bootstrap: (data: BootstrapData) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -53,7 +42,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const refreshUser = async () => {
-    if (!firebaseAuth.currentUser) {
+    if (!firebaseAuth?.currentUser) {
       setUser(null);
       return;
     }
@@ -73,6 +62,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (cancelled) return;
         setSetupRequired(status.setupRequired);
         setBootstrapEnabled(status.bootstrapEnabled);
+
+        if (!firebaseAuth) {
+          setUser(null);
+          setLoading(false);
+          return;
+        }
 
         unsubscribe = onAuthStateChanged(firebaseAuth, async (firebaseUser) => {
           if (cancelled) return;
@@ -97,38 +92,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  const login = async (credentials: Credentials) => {
-    if (!firebaseConfigReady) throw new Error("A configuração web do Firebase não foi informada");
-    await signInWithEmailAndPassword(firebaseAuth, credentials.email, credentials.password);
-    await loadApplicationUser();
-  };
-
-  const bootstrap = async (data: BootstrapData) => {
-    if (!firebaseConfigReady) throw new Error("A configuração web do Firebase não foi informada");
-    if (!bootstrapEnabled) {
+  const loginWithGoogle = async () => {
+    if (!firebaseConfigReady || !firebaseAuth) {
+      throw new Error("A configuração web do Firebase não foi informada");
+    }
+    if (setupRequired && !bootstrapEnabled) {
       throw new Error("Defina FUNDERR_BOOTSTRAP_EMAIL no servidor antes da configuração inicial");
     }
 
-    const credential = await createUserWithEmailAndPassword(firebaseAuth, data.email, data.password);
-    try {
-      await updateProfile(credential.user, { displayName: data.name });
-      await credential.user.getIdToken(true);
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
+    await signInWithPopup(firebaseAuth, provider);
+
+    if (setupRequired) {
+      await firebaseAuth.currentUser?.getIdToken(true);
       const response = await fetchApi<{ user: User }>("/api/auth/bootstrap", {
         method: "POST",
-        body: JSON.stringify({ name: data.name }),
       });
-      await credential.user.getIdToken(true);
+      await firebaseAuth.currentUser?.getIdToken(true);
       setUser(response.user);
       setSetupRequired(false);
-    } catch (error) {
-      await credential.user.delete().catch(() => undefined);
-      throw error;
+      return;
     }
+
+    await loadApplicationUser();
   };
 
   const logout = async () => {
     await fetchApi<null>("/api/auth/logout", { method: "POST" }).catch(() => undefined);
-    await signOut(firebaseAuth);
+    if (firebaseAuth) await signOut(firebaseAuth);
     setUser(null);
   };
 
@@ -155,8 +147,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isConsulta,
         isPending,
         canEdit,
-        login,
-        bootstrap,
+        loginWithGoogle,
         logout,
         refreshUser,
       }}

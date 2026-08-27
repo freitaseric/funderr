@@ -9,7 +9,7 @@ export async function fetchApi<T>(
 ): Promise<T> {
   const headers = new Headers(options.headers || {});
   headers.set("Content-Type", "application/json");
-  if (firebaseAuth.currentUser) {
+  if (firebaseAuth?.currentUser) {
     const idToken = await firebaseAuth.currentUser.getIdToken();
     headers.set("Authorization", `Bearer ${idToken}`);
   }

@@ -91,6 +91,37 @@ export function roundCurrency(val: number): number {
 }
 
 /**
+ * Completeness of the process' own identifying data. Beneficiary and property
+ * contents are evaluated by their respective stages; here we only verify that
+ * the process is correctly linked to them.
+ */
+export function calculateProposalCompleteness(p: Partial<Proposal>): {
+  percent: number;
+  pendencias: string[];
+} {
+  const date = p.data?.trim() || "";
+  const parsedDate = /^\d{4}-\d{2}-\d{2}$/.test(date)
+    ? new Date(`${date}T00:00:00.000Z`)
+    : null;
+  const hasValidDate = Boolean(
+    parsedDate &&
+      !Number.isNaN(parsedDate.getTime()) &&
+      parsedDate.toISOString().slice(0, 10) === date
+  );
+  const checks = [
+    { valid: Boolean(p.numero?.trim()), message: "Número oficial do processo não informado" },
+    { valid: Boolean(p.beneficiaryId?.trim()), message: "Beneficiário não vinculado ao processo" },
+    { valid: Boolean(p.propertyId?.trim()), message: "Propriedade não vinculada ao processo" },
+    { valid: hasValidDate, message: "Data de formalização inválida ou não informada" },
+    { valid: Boolean(p.atividade?.trim()), message: "Atividade produtiva não informada" },
+  ];
+
+  const pendencias = checks.filter((check) => !check.valid).map((check) => check.message);
+  const passed = checks.length - pendencias.length;
+  return { percent: Math.round((passed / checks.length) * 100), pendencias };
+}
+
+/**
  * Beneficiary completeness calculation
  */
 export function calculateBeneficiaryCompleteness(b: Partial<Beneficiary>): {

@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import { db } from "../db/database";
-import { Proposal, StepStatus, User } from "../../domain/types";
-import { calculateBeneficiaryCompleteness, calculatePropertyCompleteness, determineEffectiveStepStatuses } from "../../domain/calculations";
+import { Proposal, ProposalStatusHistory, StepStatus, User } from "../../domain/types";
+import { calculateBeneficiaryCompleteness, calculatePropertyCompleteness, calculateProposalCompleteness, determineEffectiveStepStatuses } from "../../domain/calculations";
 import { IdentificationService } from "./identification.service";
 
 export interface ProposalDetailView {
@@ -24,6 +24,10 @@ export interface ProposalDetailView {
   totalPendencias: number;
 }
 
+export interface ProposalStatusHistoryView extends ProposalStatusHistory {
+  changedByName: string;
+}
+
 export class ProposalService {
   private static readonly allowedStatusTransitions: Record<Proposal["status"], Proposal["status"][]> = {
     "EM ELABORAÇÃO": ["EM ANÁLISE"],
@@ -40,6 +44,22 @@ export class ProposalService {
 
   static getById(id: string): ProposalDetailView | null {
     return this.getDetailedView(id);
+  }
+
+  static getStatusHistory(id: string): ProposalStatusHistoryView[] {
+    const raw = db.getRawData();
+    if (!raw.proposals.some((proposal) => proposal.id === id)) {
+      throw new Error("Processo não encontrado");
+    }
+
+    return raw.proposalStatusHistory
+      .filter((item) => item.proposalId === id)
+      .sort((a, b) => b.changedAt.localeCompare(a.changedAt))
+      .map((item) => ({
+        ...item,
+        changedByName:
+          raw.users.find((user) => user.id === item.changedById)?.name || "Usuário não localizado",
+      }));
   }
 
   static create(
@@ -286,7 +306,16 @@ export class ProposalService {
     const docs = raw.documents.filter((d) => d.proposalId === id);
     const docsConfirmed = docs.filter((d) => d.status === "CONFIRMED").length;
 
-    const etapaDadosGerais = { status: "CONCLUIDO" as StepStatus, percent: 100, pendencias: [] as string[] };
+    const proposalCompleteness = calculateProposalCompleteness(proposal);
+    const etapaDadosGerais = {
+      status: (proposalCompleteness.percent === 100
+        ? "CONCLUIDO"
+        : proposalCompleteness.percent > 0
+          ? "RASCUNHO"
+          : "PENDENTE") as StepStatus,
+      percent: proposalCompleteness.percent,
+      pendencias: proposalCompleteness.pendencias,
+    };
     const etapaBen = {
       status: (benCompleteness.percent === 100 ? "CONCLUIDO" : benCompleteness.percent > 0 ? "RASCUNHO" : "PENDENTE") as StepStatus,
       percent: benCompleteness.percent,
