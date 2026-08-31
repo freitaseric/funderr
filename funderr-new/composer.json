@@ -8,5 +8,9 @@
     "psr-4": {
       "Funderr\\": "src/"
     }
+  },
+  "scripts": {
+    "start": "php -S 127.0.0.1:8000 -t public public/router.php",
+    "migrate": "php scripts/migrate.php"
   }
 }
