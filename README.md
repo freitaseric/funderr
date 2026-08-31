@@ -1,87 +1,64 @@
-# FUNDERR — pacote de migração para Google AI Studio + Firebase
+# FUNDERR
 
-Este repositório foi preparado a partir do **FUNDERR v0.10.2**, exportado do Google Apps Script.
+Migração do FUNDERR v0.10.2 para dois sistemas independentes, ambos gerenciados com Bun:
 
-## Objetivo
+- [`funderr-frontend`](./funderr-frontend): React 19, Vite e TanStack Router, preparado para Vercel;
+- [`funderr-backend`](./funderr-backend): Fastify 5 e Bun, preparado para Railway via Docker;
+- [`legacy/v0.10.2`](./legacy/v0.10.2): baseline imutável do Google Apps Script usado para conferir a paridade funcional.
 
-Transformar o sistema legado em uma aplicação web moderna, full-stack e versionada, mantendo **paridade funcional** com a v0.10.2 e adicionando uma fundação Firebase apropriada para produção.
+Firebase Authentication, Cloud Firestore, Cloud Storage, regras, índices e Remote Config foram mantidos. O frontend só recebe configuração pública `VITE_*`; credenciais administrativas permanecem no backend.
 
-### Destino arquitetural
+## Instalação
 
-- React 19 + TypeScript
-- Google AI Studio Build mode como ambiente de construção assistida
-- Firebase Authentication
-- Cloud Firestore
-- Cloud Storage
-- Firebase App Check
-- Firebase Analytics e Performance Monitoring
-- Firebase AI Logic/Gemini preparado para funcionalidades assistivas
-- Runtime Node.js server-side para regras autoritativas, cálculos e operações privilegiadas
-- GovBR-DS React
-- Google Maps
-- Deploy pelo fluxo do Google AI Studio/Google Cloud
-- GitHub como fonte de verdade do código
+Cada aplicação tem seu próprio `package.json`, `bun.lock`, `.env.example` e README, podendo virar um repositório separado sem depender da raiz.
 
-## Regra principal
+```bash
+cd funderr-backend
+cp .env.example .env.local
+bun install
 
-**Não apagar, editar ou “modernizar” a pasta `legacy/v0.10.2`.**
+cd ../funderr-frontend
+cp .env.example .env.local
+bun install
+```
 
-Ela é a especificação executável do comportamento existente.
+Inicie cada projeto em um terminal:
 
-## Desenvolvimento local
+```bash
+bun run dev:backend
+bun run dev:frontend
+```
 
-1. Copie `.env.example` para `.env.local` e preencha a configuração pública do app Web Firebase.
-2. Defina `FIREBASE_PROJECT_ID` e `FUNDERR_BOOTSTRAP_EMAIL`.
-3. Autentique o backend sem chave permanente com `gcloud auth application-default login`.
-4. Execute `bun run dev`.
+O frontend abre em `http://localhost:5173`; a API, em `http://localhost:3001`.
 
-O acesso ao FUNDERR é feito exclusivamente por Conta Google. No primeiro acesso, usuários ainda não aprovados são cadastrados como `PENDING`; um administrador atribui o papel e ativa a conta em Configurações. A senha Google nunca é recebida pelo FUNDERR.
+## Verificação conjunta
 
-A configuração versionada de provedores está em `firebase.json`. Para publicá-la no projeto associado em `.firebaserc`, use `bunx firebase-tools deploy --only auth`.
+```bash
+bun run typecheck
+bun test
+bun run build
+```
 
-## Como usar no Google AI Studio
+## Deploy
 
-1. Crie um repositório GitHub novo para este conteúdo.
-2. Faça upload/commit deste pacote.
-3. Abra Google AI Studio > Build.
-4. No campo de prompt, use **Add files (+) > Import from GitHub** e selecione o repositório.
-5. Cole o conteúdo de `AI_STUDIO_MASTER_PROMPT.md`.
-6. Antes de habilitar Firebase, leia `docs/04_TARGET_ARCHITECTURE.md` e `docs/06_SECURITY_MODEL.md`.
-7. Ao aparecer a integração Firebase, escolha um projeto novo/vazio e a localização **São Paulo (`southamerica-east1`)**, salvo restrição institucional em contrário.
-8. O prompt mestre executará primeiro a auditoria (`prompts/01_ANALYZE.md`). Depois, execute `prompts/02_BOOTSTRAP_FIREBASE.md` em diante, uma fase por vez.
+### Frontend — Vercel
 
-## O que este ZIP contém
+Crie o projeto com Root Directory `funderr-frontend`. O manifesto usa Bun para instalar e compilar e mantém deep links do TanStack Router funcionando.
 
-- fonte original v0.10.2 preservada;
-- inventário funcional e de dados;
-- regras de negócio críticas;
-- modelo Firestore recomendado;
-- arquitetura e segurança;
-- plano de migração;
-- checklist de aceitação;
-- prompts sequenciais para o agente do AI Studio;
-- manifestos JSON de schema e API legado.
+Defina as variáveis `VITE_FIREBASE_*` e `VITE_API_URL=https://SEU-BACKEND`. Adicione todos os domínios da Vercel usados em produção/preview no Firebase Authentication.
 
-## O que NÃO está neste ZIP
+### Backend — Railway
 
-A exportação recebida contém **somente o código do Apps Script**. Os dados reais da planilha não vieram junto.
+Crie o serviço com Root Directory `funderr-backend`. Railway detectará o `Dockerfile`; o `railway.json` configura `/api/health`. Defina:
 
-Portanto, este pacote ainda não contém:
+- `FIREBASE_PROJECT_ID`;
+- `FIREBASE_STORAGE_BUCKET`;
+- `FIREBASE_SERVICE_ACCOUNT_JSON` como segredo;
+- `FUNDERR_BOOTSTRAP_EMAIL`;
+- `FRONTEND_ORIGINS`, com os domínios exatos da Vercel separados por vírgula.
 
-- beneficiários reais;
-- propriedades reais;
-- processos/propostas reais;
-- itens patrimoniais;
-- fluxos de caixa;
-- financiamentos;
-- garantias;
-- linhas de crédito cadastradas na planilha.
+O processo lê a variável `PORT` fornecida pela Railway e escuta em `0.0.0.0`. Mantenha uma única réplica enquanto a persistência usar o snapshot em memória sincronizado com Firestore.
 
-Esses registros devem ser migrados em uma etapa separada a partir de XLSX/CSV/Google Sheets.
+## Observação sobre dados
 
-## Versionamento sugerido
-
-- `legacy-v0.10.2`: último baseline Apps Script
-- `v1.0.0-alpha.1`: primeiro scaffold Firebase
-- `v1.0.0-beta.1`: paridade funcional completa
-- `v1.0.0`: produção
+O JSON incluído é apenas uma base de demonstração. Dados reais da planilha original não vieram com a exportação e ainda exigem uma importação separada a partir de XLSX, CSV ou Google Sheets.
