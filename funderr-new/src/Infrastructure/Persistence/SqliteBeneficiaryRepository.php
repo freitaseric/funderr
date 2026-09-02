@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Funderr\Infrastructure\Persistence;
 
 use Funderr\Domain\Beneficiary\Beneficiary;
-use Funderr\Domain\Beneficiary\BeneficiaryMapper;
 use Funderr\Domain\Beneficiary\BeneficiaryRepository;
 use PDO;
 use RuntimeException;
@@ -176,36 +175,80 @@ final class SqliteBeneficiaryRepository implements BeneficiaryRepository
             '
         );
 
-        $stmt->execute([
-            'nome' => $data->nome,
-            'cpf' => $data->cpf,
-            'telefone' => $data->telefone,
-            'apelido' => $data->apelido,
-            'nacionalidade' => $data->nacionalidade,
-            'naturalidade' => $data->naturalidade,
-            'estadoCivil' => $data->estadoCivil,
-            'dataNascimento' => $data->dataNascimento,
-            'profissao' => $data->profissao,
-            'rg' => $data->rg,
-            'escolaridade' => $data->escolaridade,
-            'endereco' => $data->endereco,
-            'dependentes' => $data->dependentes,
-            'conjugeNome' => $data->conjugeNome,
-            'conjugeRg' => $data->conjugeRg,
-            'conjugeCpf' => $data->conjugeCpf
-        ]);
+        $stmt->execute(BeneficiaryMapper::toRow($data));
 
         $id = (int) $this->pdo->lastInsertId();
 
-        $createdUser = $this->findById($id);
+        $createdBeneficiary = $this->findById($id);
 
-        if ($createdUser === null) {
+        if ($createdBeneficiary === null) {
             throw new RuntimeException(
-                'Não foi possível recuperar o usuário criado.'
+                'Não foi possível recuperar o beneficiário criado.'
             );
         }
 
-        return $createdUser;
+        return $createdBeneficiary;
+    }
+
+    public function update(Beneficiary $beneficiary): Beneficiary
+    {
+        if ($beneficiary->id === null) {
+            throw new RuntimeException('Beneficiário sem ID não pode ser atualizado.');
+        }
+
+        $values = BeneficiaryMapper::toRow($beneficiary);
+        $assignments = array_map(
+            static fn(string $field): string => "{$field} = :{$field}",
+            array_keys($values),
+        );
+        $statement = $this->pdo->prepare(
+            'UPDATE beneficiaries SET ' . implode(', ', $assignments) .
+            ', updatedAt = CURRENT_TIMESTAMP WHERE id = :id'
+        );
+        $statement->execute([...$values, 'id' => $beneficiary->id]);
+
+        $updated = $this->findById($beneficiary->id);
+        if ($updated === null) {
+            throw new RuntimeException('Não foi possível recuperar o beneficiário atualizado.');
+        }
+
+        return $updated;
+    }
+
+    public function references(int $beneficiaryId): array
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT id, beneficiary_id, ordem, nome, telefone
+             FROM beneficiary_references WHERE beneficiary_id=:id ORDER BY ordem'
+        );
+        $statement->execute(['id' => $beneficiaryId]);
+
+        return $statement->fetchAll();
+    }
+
+    public function replaceReferences(int $beneficiaryId, array $references): void
+    {
+        $this->pdo->beginTransaction();
+        try {
+            $this->pdo->prepare('DELETE FROM beneficiary_references WHERE beneficiary_id=:id')
+                ->execute(['id' => $beneficiaryId]);
+            $statement = $this->pdo->prepare(
+                'INSERT INTO beneficiary_references (beneficiary_id, ordem, nome, telefone)
+                 VALUES (:beneficiary_id, :ordem, :nome, :telefone)'
+            );
+            foreach ($references as $index => $reference) {
+                $statement->execute([
+                    'beneficiary_id' => $beneficiaryId,
+                    'ordem' => $index + 1,
+                    'nome' => $reference['nome'],
+                    'telefone' => $reference['telefone'],
+                ]);
+            }
+            $this->pdo->commit();
+        } catch (\Throwable $throwable) {
+            $this->pdo->rollBack();
+            throw $throwable;
+        }
     }
 
 }

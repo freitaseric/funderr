@@ -8,7 +8,7 @@ use Funderr\Database\Connection;
 
 $rootPath = dirname(__DIR__);
 
-$databasePath = $rootPath . '/data/funderr.sqlite';
+$databasePath = getenv('FUNDERR_DATABASE_PATH') ?: $rootPath . '/data/funderr.sqlite';
 
 $migrationsPath = $rootPath . '/migrations';
 

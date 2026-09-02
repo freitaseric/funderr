@@ -17,4 +17,10 @@ interface BeneficiaryRepository
 
     public function create(Beneficiary $data): Beneficiary;
 
+    public function update(Beneficiary $beneficiary): Beneficiary;
+
+    public function references(int $beneficiaryId): array;
+
+    public function replaceReferences(int $beneficiaryId, array $references): void;
+
 }
