@@ -1,64 +1,72 @@
 # FUNDERR
 
-Migração do FUNDERR v0.10.2 para dois sistemas independentes, ambos gerenciados com Bun:
+Sistema institucional do Instituto de Assistência Técnica e Extensão Rural do
+Estado de Roraima (IATER) para elaboração e gestão de projetos de crédito rural.
 
-- [`funderr-frontend`](./funderr-frontend): React 19, Vite e TanStack Router, preparado para Vercel;
-- [`funderr-backend`](./funderr-backend): Fastify 5 e Bun, preparado para Railway via Docker;
-- [`legacy/v0.10.2`](./legacy/v0.10.2): baseline imutável do Google Apps Script usado para conferir a paridade funcional.
+> **Uso restrito:** este é um projeto privado do Instituto de Assistência Técnica e
+> Extensão Rural do Estado de Roraima (IATER). O código-fonte, os documentos e os
+> dados associados não podem ser copiados, distribuídos ou utilizados sem
+> autorização institucional.
 
-Firebase Authentication, Cloud Firestore, Cloud Storage, regras, índices e Remote Config foram mantidos. O frontend só recebe configuração pública `VITE_*`; credenciais administrativas permanecem no backend.
+## Requisitos
 
-## Instalação
+- PHP 8.2 ou superior;
+- extensões PDO SQLite, mbstring e fileinfo;
+- Composer.
 
-Cada aplicação tem seu próprio `package.json`, `bun.lock`, `.env.example` e README, podendo virar um repositório separado sem depender da raiz.
-
-```bash
-cd funderr-backend
-cp .env.example .env.local
-bun install
-
-cd ../funderr-frontend
-cp .env.example .env.local
-bun install
-```
-
-Inicie cada projeto em um terminal:
+## Instalação e execução
 
 ```bash
-bun run dev:backend
-bun run dev:frontend
+composer install
+composer migrate
+composer start
 ```
 
-O frontend abre em `http://localhost:5173`; a API, em `http://localhost:3001`.
+O servidor permanece ativo no terminal e escuta em `0.0.0.0:8000`. No próprio
+computador, acesse `http://127.0.0.1:8000`. Para acessar de outro dispositivo na
+mesma rede, utilize `http://IP-DO-COMPUTADOR:8000`.
 
-## Verificação conjunta
+O servidor embutido do PHP é destinado a desenvolvimento e apresentações em rede
+local confiável. A aplicação não possui autenticação; não a exponha diretamente à
+internet nem a redes públicas.
+
+## Dados e armazenamento
+
+Por padrão:
+
+- o banco SQLite fica em `data/funderr.sqlite`;
+- os documentos privados ficam em `data/documents`;
+- variáveis `FUNDERR_DATABASE_PATH` e `FUNDERR_DOCUMENTS_PATH` permitem definir
+  locais alternativos.
+
+Esses diretórios podem conter dados pessoais e documentos institucionais. Não os
+adicione ao Git e mantenha cópias de segurança conforme as políticas do IATER e a
+legislação aplicável.
+
+## Funcionalidades
+
+- painel operacional;
+- beneficiários, referências pessoais e propriedades;
+- processos e controle de completude;
+- levantamento patrimonial e dívidas;
+- identificação, empregos, usos e fontes;
+- fluxo de caixa de sete anos;
+- financiamento SAC, garantias e capacidade de pagamento;
+- documentos privados;
+- linhas de crédito, auditoria e presença de dispositivos.
+
+## Validação
 
 ```bash
-bun run typecheck
-bun test
-bun run build
+composer test
 ```
 
-## Deploy
+## Documentação histórica
 
-### Frontend — Vercel
+O diretório `docs/` contém materiais usados na análise de paridade com a planilha
+original. Esses documentos são referências históricas e não substituem a validação
+das regras com os usuários responsáveis pelo processo.
 
-Crie o projeto com Root Directory `funderr-frontend`. O manifesto usa Bun para instalar e compilar e mantém deep links do TanStack Router funcionando.
+## Licença
 
-Defina as variáveis `VITE_FIREBASE_*` e `VITE_API_URL=https://SEU-BACKEND`. Adicione todos os domínios da Vercel usados em produção/preview no Firebase Authentication.
-
-### Backend — Railway
-
-Crie o serviço com Root Directory `funderr-backend`. Railway detectará o `Dockerfile`; o `railway.json` configura `/api/health`. Defina:
-
-- `FIREBASE_PROJECT_ID`;
-- `FIREBASE_STORAGE_BUCKET`;
-- `FIREBASE_SERVICE_ACCOUNT_JSON` como segredo;
-- `FUNDERR_BOOTSTRAP_EMAIL`;
-- `FRONTEND_ORIGINS`, com os domínios exatos da Vercel separados por vírgula.
-
-O processo lê a variável `PORT` fornecida pela Railway e escuta em `0.0.0.0`. Mantenha uma única réplica enquanto a persistência usar o snapshot em memória sincronizado com Firestore.
-
-## Observação sobre dados
-
-O JSON incluído é apenas uma base de demonstração. Dados reais da planilha original não vieram com a exportação e ainda exigem uma importação separada a partir de XLSX, CSV ou Google Sheets.
+Software proprietário do IATER. Consulte o arquivo [`LICENSE`](LICENSE).

@@ -5,7 +5,7 @@
                 <p>Fundo de Desenvolvimento Rural do Estado de Roraima</p>
             </div>
             <div class="footer-institutional">
-                <span>IATER — Instituto de Assistência Técnica e Extensão Rural</span>
+                <span>IATER — Instituto de Assistência Técnica e Extensão Rural do Estado de Roraima</span>
                 <small>Elaboração e gestão de projetos de crédito rural</small>
                 <small>&copy; <?= date('Y') ?> Governo do Estado de Roraima</small>
             </div>
