@@ -22,6 +22,15 @@ RUN cp "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 
 WORKDIR /var/www/html
 
+FROM php-base AS development
+
+ARG DEV_UID=1000
+ARG DEV_GID=1000
+RUN groupmod -o -g "$DEV_GID" www-data \
+    && usermod -o -u "$DEV_UID" -g "$DEV_GID" www-data \
+    && cp "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini" \
+    && echo 'opcache.enable=0' > "$PHP_INI_DIR/conf.d/development.ini"
+
 FROM php-base AS app
 
 COPY . .

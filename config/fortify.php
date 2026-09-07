@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\NormalizeLoginCpf;
 use Laravel\Fortify\Features;
 
 return [
@@ -45,7 +46,7 @@ return [
     |
     */
 
-    'username' => 'email',
+    'username' => 'cpf',
 
     'email' => 'email',
 
@@ -101,7 +102,7 @@ return [
     |
     */
 
-    'middleware' => ['web'],
+    'middleware' => ['web', NormalizeLoginCpf::class],
 
     /*
     |--------------------------------------------------------------------------
@@ -162,8 +163,6 @@ return [
     */
 
     'features' => [
-        Features::registration(),
-        Features::resetPasswords(),
         // Features::emailVerification(),
         Features::updateProfileInformation(),
         Features::updatePasswords(),

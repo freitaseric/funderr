@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")"
+export DEV_UID="$(id -u)"
+export DEV_GID="$(id -g)"
+compose=(docker compose -f docker-compose.yml -f docker-compose.dev.yml)
+
+case "${1:-help}" in
+    setup)
+        "${compose[@]}" build app
+        "${compose[@]}" run --rm app composer install --no-interaction --prefer-dist
+        pnpm install --frozen-lockfile
+        "${compose[@]}" run --rm app php artisan optimize:clear
+        ;;
+    up)
+        "${compose[@]}" up -d --wait
+        exec pnpm run dev
+        ;;
+    artisan|composer)
+        command="$1"
+        shift
+        if [[ "$command" == artisan ]]; then
+            exec "${compose[@]}" exec app php artisan "$@"
+        fi
+        exec "${compose[@]}" exec app composer "$@"
+        ;;
+    test)
+        shift
+        exec "${compose[@]}" exec app composer test -- "$@"
+        ;;
+    restart-workers)
+        exec "${compose[@]}" restart horizon scheduler
+        ;;
+    stop)
+        exec "${compose[@]}" stop
+        ;;
+    *)
+        echo 'Uso: ./dev {setup|up|artisan ...|composer ...|test|restart-workers|stop}'
+        ;;
+esac
