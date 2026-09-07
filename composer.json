@@ -1,10 +1,10 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/laravel",
+    "name": "freitaseric/funderr",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
+    "description": "Sistema interno do IATER para elaboração e gestão de projetos de crédito rural.",
     "keywords": ["laravel", "framework"],
-    "license": "MIT",
+    "license": "proprietary",
     "require": {
         "php": "^8.3",
         "laravel/fortify": "^1.39",
