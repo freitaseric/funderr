@@ -1,0 +1,22 @@
+{
+  "name": "freitaseric/funderr",
+  "description": "Aplicação fullstack do sistema FUNDERR.",
+  "license": "proprietary",
+  "type": "project",
+  "require": {
+    "php": ">=8.2"
+  },
+  "autoload": {
+    "psr-4": {
+      "Funderr\\": "src/"
+    }
+  },
+  "scripts": {
+    "start": [
+      "Composer\\Config::disableProcessTimeout",
+      "php -S 0.0.0.0:8000 -t public public/router.php"
+    ],
+    "migrate": "php scripts/migrate.php",
+    "test": "php tests/run.php"
+  }
+}
