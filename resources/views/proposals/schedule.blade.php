@@ -1,0 +1,3 @@
+<div class="overflow-x-auto"><table class="table table-sm"><caption class="pb-3 text-left font-semibold">Cronograma anual SAC</caption><thead><tr><th>Ano</th><th>Saldo inicial</th><th>Juros</th><th>Principal</th><th>Prestação</th><th>Saldo final</th><th>% amortizada</th></tr></thead><tbody>
+@forelse($financing['schedule'] as $row)<tr><th>{{ $row['year'] }}</th>@foreach(['opening', 'interest', 'principal', 'payment', 'closing'] as $field)<td class="whitespace-nowrap">{{ number_format($row[$field], 2, ',', '.') }}</td>@endforeach<td>{{ number_format($row['amortized_percentage'], 2, ',', '.') }}%</td></tr>@empty<tr><td colspan="7">Preencha o cenário financeiro para visualizar as parcelas.</td></tr>@endforelse
+</tbody></table></div>

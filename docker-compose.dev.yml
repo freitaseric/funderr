@@ -1,0 +1,26 @@
+services:
+    app: &development-runtime
+        build:
+            target: development
+            args:
+                DEV_UID: ${DEV_UID:-1000}
+                DEV_GID: ${DEV_GID:-1000}
+        image: funderr-development:local
+        user: "${DEV_UID:-1000}:${DEV_GID:-1000}"
+        environment:
+            APP_ENV: local
+            APP_DEBUG: "true"
+            COMPOSER_HOME: /tmp/composer
+        volumes: !override
+            - .:/var/www/html
+
+    horizon:
+        <<: *development-runtime
+
+    scheduler:
+        <<: *development-runtime
+
+    web:
+        volumes:
+            - ./public:/var/www/html/public:ro
+            - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro

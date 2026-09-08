@@ -1,72 +1,58 @@
 # FUNDERR
 
-Sistema institucional do Instituto de Assistência Técnica e Extensão Rural do
-Estado de Roraima (IATER) para elaboração e gestão de projetos de crédito rural.
+Sistema interno do Instituto de Assistência Técnica e Extensão Rural do Estado de
+Roraima (IATER) para elaboração e gestão de projetos de crédito rural destinados à
+Desenvolve RR.
 
-> **Uso restrito:** este é um projeto privado do Instituto de Assistência Técnica e
-> Extensão Rural do Estado de Roraima (IATER). O código-fonte, os documentos e os
-> dados associados não podem ser copiados, distribuídos ou utilizados sem
-> autorização institucional.
+## Estado da migração
 
-## Requisitos
+A aplicação está sendo migrada para Laravel. A infraestrutura já contém PostgreSQL,
+Redis, Horizon, scheduler, PHP-FPM e Nginx. O código anterior permanece em `legacy/`
+como referência para transportar as regras de negócio e os testes.
 
-- PHP 8.2 ou superior;
-- extensões PDO SQLite, mbstring e fileinfo;
-- Composer.
+A autenticação por CPF, os perfis operacionais e os módulos de propostas ainda estão
+em implementação. Esta versão não deve receber dados reais até a conclusão e a
+validação desses controles.
 
-## Instalação e execução
+## Execução com Docker
+
+Copie o arquivo de ambiente e defina uma senha própria para o PostgreSQL:
+
+```bash
+cp .env.example .env
+php artisan key:generate
+```
+
+Construa e inicie os serviços e aplique as migrations:
+
+```bash
+docker compose up -d --build --wait
+docker compose run --rm app php artisan migrate
+```
+
+A aplicação fica disponível em `http://localhost:8080`. Durante o desenvolvimento,
+o painel do Horizon fica em `http://localhost:8080/horizon`.
+
+## Desenvolvimento e validação
 
 ```bash
 composer install
-composer migrate
-composer start
-```
-
-O servidor permanece ativo no terminal e escuta em `0.0.0.0:8000`. No próprio
-computador, acesse `http://127.0.0.1:8000`. Para acessar de outro dispositivo na
-mesma rede, utilize `http://IP-DO-COMPUTADOR:8000`.
-
-O servidor embutido do PHP é destinado a desenvolvimento e apresentações em rede
-local confiável. A aplicação não possui autenticação; não a exponha diretamente à
-internet nem a redes públicas.
-
-## Dados e armazenamento
-
-Por padrão:
-
-- o banco SQLite fica em `data/funderr.sqlite`;
-- os documentos privados ficam em `data/documents`;
-- variáveis `FUNDERR_DATABASE_PATH` e `FUNDERR_DOCUMENTS_PATH` permitem definir
-  locais alternativos.
-
-Esses diretórios podem conter dados pessoais e documentos institucionais. Não os
-adicione ao Git e mantenha cópias de segurança conforme as políticas do IATER e a
-legislação aplicável.
-
-## Funcionalidades
-
-- painel operacional;
-- beneficiários, referências pessoais e propriedades;
-- processos e controle de completude;
-- levantamento patrimonial e dívidas;
-- identificação, empregos, usos e fontes;
-- fluxo de caixa de sete anos;
-- financiamento SAC, garantias e capacidade de pagamento;
-- documentos privados;
-- linhas de crédito, auditoria e presença de dispositivos.
-
-## Validação
-
-```bash
+pnpm install
+pnpm run build
 composer test
+vendor/bin/pint --dirty
+composer validate --strict
 ```
 
-## Documentação histórica
+Os testes locais usam SQLite em memória. Funcionalidades específicas de PostgreSQL,
+Redis e processamento assíncrono também devem ser verificadas nos containers.
 
-O diretório `docs/` contém materiais usados na análise de paridade com a planilha
-original. Esses documentos são referências históricas e não substituem a validação
-das regras com os usuários responsáveis pelo processo.
+## Dados e documentos
+
+Arquivos privados são armazenados pelo disco local do Laravel em um volume
+persistente compartilhado entre a aplicação e o Horizon. Bancos, anexos,
+credenciais e dados pessoais reais nunca devem ser adicionados ao Git.
 
 ## Licença
 
-Software proprietário do IATER. Consulte o arquivo [`LICENSE`](LICENSE).
+Software proprietário do IATER. Consulte [LICENSE](LICENSE).
