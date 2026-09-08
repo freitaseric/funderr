@@ -25,8 +25,7 @@ class EnsurePasswordChanged
         ) {
             if ($request->expectsJson()) {
                 return response()->json([
-                    'message'
-                    => 'Altere sua senha antes de continuar.'
+                    'message' => 'Altere sua senha antes de continuar.',
                 ], 403);
             }
 

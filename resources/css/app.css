@@ -1,5 +1,15 @@
 @import 'tailwindcss';
 
+[x-cloak] {
+    display: none !important;
+}
+
+input[aria-invalid='true'],
+textarea[aria-invalid='true'],
+select[aria-invalid='true'] {
+    border-color: var(--color-error);
+}
+
 @plugin "daisyui" {
     themes: corporate --default, business --prefersdark;
 }

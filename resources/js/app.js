@@ -18,3 +18,21 @@ document.querySelectorAll('[data-cpf-mask]').forEach((input) => {
     maskCpf(input);
     input.addEventListener('input', () => maskCpf(input));
 });
+
+function formatMoneyInput(input, typing = false) {
+    let digits;
+    if (typing) {
+        digits = input.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '').slice(0, 11) || '0';
+    } else {
+        const decimal = input.value.replace(/R\$\s*/g, '').replace(/\./g, '').replace(',', '.').trim();
+        digits = decimal.includes('.')
+            ? decimal.split('.')[0].replace(/\D/g, '') + decimal.split('.')[1].replace(/\D/g, '').padEnd(2, '0').slice(0, 2)
+            : decimal.replace(/\D/g, '') || '0';
+        digits = digits.replace(/^0+(?=\d)/, '').slice(0, 11) || '0';
+    }
+    const cents = digits.padStart(3, '0');
+    const integer = cents.slice(0, -2).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    input.value = `R$ ${integer},${cents.slice(-2)}`;
+}
+
+window.formatMoneyInput = formatMoneyInput;

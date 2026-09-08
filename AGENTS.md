@@ -1,213 +1,730 @@
-# FUNDERR — Application Rules
+# Repository Guidelines
 
-## Scope and Migration Status
+## Project Context
 
-- FUNDERR is an internal IATER application for the rural credit team to prepare proposals for Desenvolve RR. Preserve the institutional restrictions in `LICENSE`; the Laravel scaffold's package metadata and README do not define FUNDERR's license.
-- The root application is now Laravel 13, with PHP `^8.3` required by `composer.json`; the current development environment uses PHP 8.5. Confirm installed versions before relying on package APIs.
-- `legacy/` holds the previous PHP application as a reference. Its business modules and regression tests have not yet been ported to the root application. Preserve calculations and workflow sequencing unless the user explicitly changes those business rules.
-- Keep historical analysis and spreadsheet-parity references in `docs/`. See `docs/migracao-laravel.md` for migration decisions; verify implementation status against the code rather than treating the plan as completed work.
+FUNDERR is an internal operational application used by the rural-credit team at
+IATER to prepare, review, correct, release, and track rural-credit proposals sent
+to Desenvolve RR.
 
-## Current Structure and Commands
+This is not a marketing website and not a generic SaaS dashboard.
 
-- Application code uses the `App\` namespace in `app/`; controllers are in `app/Http/Controllers/`, models in `app/Models/`, and providers in `app/Providers/`. Fortify's generated actions are in `app/Actions/Fortify/`.
-- Routes are in `routes/`, Blade templates in `resources/views/`, frontend source in `resources/css/` and `resources/js/`, and the web entry point in `public/`.
-- Add Laravel migrations under `database/migrations/`. The SQL files in `legacy/migrations/` belong to the old application.
-- Root tests use PHPUnit under `tests/Feature/` and `tests/Unit/`; `legacy/tests/run.php` is the old custom runner, not part of the root test suite.
-- `composer install` installs locked PHP dependencies and generates the autoloader. `composer test` runs the root Laravel tests; it does not establish parity with the legacy application.
-- Use `php artisan migrate` for the configured database. The root project no longer has `composer migrate` or `composer start` scripts. `composer run dev` runs the scaffold's development command, not the planned production deployment.
-- `npm run dev` runs Vite; `npm run build` builds frontend assets. Use `composer validate --strict` for dependency metadata changes and `php -l path/to/file.php` for targeted PHP syntax checks.
-- Before database changes, confirm the target connection. Validate migrations and relevant tests against an isolated database; do not run migrations on operational data merely to verify a change. `composer run setup` includes migrations and key generation, so it is not a harmless dependency-install shortcut.
+The interface should feel:
 
-## Business Requirements — Approved, Not Yet Fully Implemented
+* professional
+* institutional
+* calm
+* trustworthy
+* efficient
+* information-dense without feeling cluttered
+* consistent across the entire workflow
 
-- Use PostgreSQL for the new application, Horizon with Redis queues, and a single `docker-compose.yml` for deployment. No Compose file exists at this stage; the scaffold still defaults to SQLite and database queues when environment variables do not override them.
-- Use private local storage through Laravel's `Storage` abstraction, with a persistent volume shared by the application and Horizon. The configured local disk currently points to `storage/app/private`; shared container storage is still to be implemented.
-- Implement CPF/password authentication and the profiles Técnico, Equipe do núcleo, and Administrador. Fortify is installed, but its current username field is still `email`; the business profiles and access rules are not implemented yet.
-- Technicians prepare proposals. The nucleus team checks them, returns them for correction, releases the dossier, and records submission and the bank's response. The same nucleus user may perform all those steps; do not introduce mandatory second-person approval.
-- Submission to Desenvolve RR remains manual through WhatsApp. Downloading a dossier must not automatically count as submission, and release by the nucleus is distinct from approval by the bank.
-- Use `docs/projeto final - versão antiga.pdf` as the final project template despite its filename. Make the technical assistance contract available separately for signing during preparation; the complete dossier includes the signed contract and attachments.
-- Pre-projects will provide reusable proposal templates. Their detailed schema and field requirements still need definition. Distinguish data required at creation from data required to complete a stage; do not insert fictitious empty strings or zeros merely to satisfy `NOT NULL`.
-- Existing data is test data and does not require import. This is not an instruction to delete existing files during unrelated work.
+Prioritize clarity, workflow efficiency, and visual consistency over novelty.
 
-## Coding and Regression Rules
+---
 
-- Follow `.editorconfig` and the installed Pint conventions. Keep PascalCase class names, camelCase methods and variables, explicit types, and snake_case database columns.
-- Keep controllers focused on HTTP concerns and business calculations and transactions out of templates. The new application is mostly scaffolding; do not claim that a complete service or repository architecture has already been established.
-- In Blade, use escaped `{{ ... }}` output for untrusted values and `@csrf` in state-changing forms. `View::escape()` and `Csrf::field()` are legacy helpers, not the root application's conventions.
-- Add regression coverage for migrated calculations, validation failures, successful workflows, stage sequencing, and authorization boundaries. Use descriptive business-oriented test names; Portuguese descriptions remain appropriate.
-- The current `phpunit.xml` uses in-memory SQLite and synchronous queues. Do not mistake those defaults for PostgreSQL or Redis integration coverage; validate database-specific and asynchronous behavior with the intended services when implementing those features.
+## Project Structure & Module Organization
 
-## Commits, Reviews, and Data Protection
+This is a Laravel application.
 
-- Prefer the smallest complete change and avoid unrelated edits. Use focused Conventional Commit messages such as `feat:`, `fix:`, `refactor:`, and `chore:` with imperative summaries.
-- PRs should describe the business rule, affected workflow, migration impact, and verification performed. Link relevant issues or `docs/` references, and include screenshots for UI changes.
-- Never commit databases, uploaded documents, credentials, or real personal data. Use anonymized examples in tests and documentation; keep private attachments out of publicly linked storage.
-- This remains an internal system. Do not expose the PHP development server directly to the internet. Installed authentication packages do not prove that CPF login, business permissions, or document access are ready for operational use.
+Application code lives in `app/`, including models, controllers, policies, services,
+jobs, Livewire components, enums, and validation rules.
 
-<laravel-boost-guidelines>
-=== foundation rules ===
+HTTP and console routes are in `routes/`.
 
-# Laravel Boost Guidelines
+Database migrations, factories, and seeders are in `database/`.
 
-The Laravel Boost guidelines are specifically curated by Laravel maintainers for this application. These guidelines should be followed closely to ensure the best experience when building Laravel applications.
+Blade templates and frontend assets are under:
 
-## Foundational Context
+* `resources/views/`
+* `resources/js/`
+* `resources/css/`
 
-This application is a Laravel application running on PHP 8.5. You are an expert with the Laravel ecosystem. Always use the APIs that match the installed major version of each package — do not assume a version.
+Tests are split into:
 
-Before relying on a package's API, confirm its installed version:
+* `tests/Feature/`
+* `tests/Unit/`
 
-- PHP packages: run `composer show --direct` to list direct dependencies with versions, or `composer show <vendor/package>` for a single package.
-- JS packages: check `package.json` for the installed versions.
+The previous implementation is preserved in `legacy/` for reference.
 
-## Skills Activation
+Supporting documents and images are in `docs/` and `public/`.
 
-This project has domain-specific skills available in `**/skills/**`. You MUST activate the relevant skill whenever you work in that domain—don't wait until you're stuck.
+Do not treat `legacy/` as an architectural reference for the new application unless
+the task explicitly concerns compatibility or business behavior. It may be consulted
+to understand workflows, terminology, and required data.
 
-## Conventions
+---
 
-- You must follow all existing code conventions used in this application. When creating or editing a file, check sibling files for the correct structure, approach, and naming.
-- Use descriptive names for variables and methods. For example, `isRegisteredForDiscounts`, not `discount()`.
-- Check for existing components to reuse before writing a new one.
+## Build, Test, and Development Commands
 
-## Verification Scripts
+* `composer install` installs PHP dependencies.
+* `pnpm install` installs frontend dependencies.
+* `pnpm run build` compiles frontend assets.
+* `composer test` clears configuration and runs the Laravel test suite.
+* `vendor/bin/pint --dirty` formats changed PHP files.
+* `docker compose up -d --build --wait` starts the application and supporting services.
+* `docker compose run --rm app php artisan migrate` applies database migrations.
 
-- Do not create verification scripts or tinker when tests cover that functionality and prove they work. Unit and feature tests are more important.
+For initial setup:
 
-## Application Structure & Architecture
+1. copy `.env.example` to `.env`;
+2. run `php artisan key:generate`;
+3. start the Docker environment;
+4. access the application at `http://localhost:8080`.
 
-- Stick to existing directory structure; don't create new base folders without approval.
-- Do not change the application's dependencies without approval.
+Prefer running application-dependent commands inside the Docker environment when the
+behavior depends on PostgreSQL, Redis, Horizon, queues, or other container services.
 
-## Frontend Bundling
+---
 
-- If the user doesn't see a frontend change reflected in the UI, it could mean they need to run `npm run build`, `npm run dev`, or `composer run dev`. Ask them.
+## Coding Style & Naming Conventions
 
-## Documentation Files
+Use four-space PHP indentation and follow PSR-12 and Laravel conventions.
 
-- You must only create documentation files if explicitly requested by the user.
+Naming conventions:
 
-## Replies
+* classes: `PascalCase`
+* methods and variables: `camelCase`
+* database fields: `snake_case`
+* configuration keys: `snake_case`
 
-- Be concise in your explanations - focus on what's important rather than explaining obvious details.
+Livewire components should be organized by domain, for example:
 
-=== boost rules ===
+`app/Livewire/Proposals/`
 
-# Laravel Boost
+Keep domain calculations, workflow rules, and business decisions outside Blade views.
 
-## Tools
+Prefer domain services in `app/Services/` where business logic would otherwise be
+duplicated or become difficult to test.
 
-- Laravel Boost is an MCP server with tools designed specifically for this application. Prefer Boost tools over manual alternatives like shell commands or file reads.
-- Use `database-query` to run read-only queries against the database instead of writing raw SQL in tinker.
-- Use `database-schema` to inspect table structure before writing migrations or models.
-- Use `get-absolute-url` to resolve the correct scheme, domain, and port for project URLs. Always use this before sharing a URL with the user.
-- Use `browser-logs` to read browser logs, errors, and exceptions. Only recent logs are useful, ignore old entries.
+Run Pint before submitting PHP changes.
 
-## Searching Documentation (IMPORTANT)
+Do not introduce a new architectural pattern when an established Laravel pattern
+already solves the problem.
 
-- Use `search-docs` before changes that depend on Laravel ecosystem APIs, behavior, configuration, or version-specific syntax. Skip it for copy-only edits and other changes where package documentation is irrelevant. Reuse sufficient results already in context instead of searching again.
-- Pass a `packages` array to scope results when you know which packages are relevant.
-- Use multiple broad, topic-based queries: `['rate limiting', 'routing rate limiting', 'routing']`. Expect the most relevant results first.
-- Do not add package names to queries because package info is already shared. Use `test resource table`, not `filament 4 test resource table`.
+---
 
-### Search Syntax
+# Frontend & UI/UX Constitution
 
-1. Use words for auto-stemmed AND logic: `rate limit` matches both "rate" AND "limit".
-2. Use `"quoted phrases"` for exact position matching: `"infinite scroll"` requires adjacent words in order.
-3. Combine words and phrases for mixed queries: `middleware "rate limit"`.
-4. Use multiple queries for OR logic: `queries=["authentication", "middleware"]`.
+These rules apply to every change involving Blade, Livewire markup, Tailwind,
+daisyUI, CSS, frontend JavaScript, layouts, or reusable UI components.
 
-## Project Rules
+## Core Principle
 
-- This project contains committed, area-grouped rules in `.ai/rules` when that directory exists (settled decisions, non-obvious traps, standing constraints). Framework and package guidelines that only apply to specific paths (testing, frontend, components) also live there, under `.ai/rules/boost` — this is not just recorded decisions, it is load-bearing guidance you have not seen inline. Before you enter plan mode or create/edit any file, you MUST first: open @.ai/rules/index.md (it maps file globs to rule files), read every rule file whose globs cover the path(s) in scope, and run `grep -rin 'keyword' .ai/rules` to catch what a path match alone misses. Do not write code until you have read and are following every matching rule. If `.ai/rules` does not exist, continue without it.
-- Record durable rules with `record-rule` so the next agent or teammate inherits them instead of working them out again. Pass a `glob` (e.g. `app/Http/Controllers/**`), a short `title`, and a few-line `note`. Always use `record-rule`, never your native memory or notes tool — native memory is personal and session-scoped; only `.ai/rules` is shared with the team and persists in the repo.
+**Consistency is more important than novelty.**
 
-## Artisan
+The application must look and behave like one coherent product.
 
-- Run Artisan commands directly via the command line (e.g., `php artisan route:list`). Use `php artisan list` to discover available commands and `php artisan [command] --help` to check parameters.
-- Inspect routes with `php artisan route:list`. Filter with: `--method=GET`, `--name=users`, `--path=api`, `--except-vendor`, `--only-vendor`.
-- Read configuration values using dot notation: `php artisan config:show app.name`, `php artisan config:show database.default`. Or read config files directly from the `config/` directory.
+A solution that matches the existing interface is preferable to a theoretically
+more fashionable solution that introduces a new visual convention.
 
-## Tinker
+Do not casually redesign the application while implementing a feature.
 
-- Execute PHP in app context for debugging and testing code. Do not create models without user approval, prefer tests with factories instead. Prefer existing Artisan commands over custom tinker code.
-- Always use single quotes to prevent shell expansion: `php artisan tinker --execute 'Your::code();'`
-  - Double quotes for PHP strings inside: `php artisan tinker --execute 'User::where("active", true)->count();'`
+A feature request is not permission to change unrelated UI.
 
-=== php rules ===
+---
 
-# PHP
+## Source of Visual Truth
 
-- Always use curly braces for control structures, even for single-line bodies.
-- Use PHP 8 constructor property promotion: `public function __construct(public GitHub $github) { }`. Do not leave empty zero-parameter `__construct()` methods unless the constructor is private.
-- Use explicit return type declarations and type hints for all method parameters: `function isAccessible(User $user, ?string $path = null): bool`
-- Use TitleCase for Enum keys: `FavoritePerson`, `BestLake`, `Monthly`.
-- Prefer PHPDoc blocks over inline comments. Only add inline comments for exceptionally complex logic.
-- Use array shape type definitions in PHPDoc blocks.
+There is currently no external Figma design system.
 
-=== deployments rules ===
+Therefore, determine visual intent using the following priority order:
 
-# Deployment
+1. explicit instructions from the current task;
+2. established application shell and layouts;
+3. existing screens implementing the same or a similar workflow;
+4. existing shared Blade or Livewire components;
+5. dominant patterns repeated across the application;
+6. existing Tailwind and daisyUI configuration;
+7. daisyUI semantic primitives and defaults;
+8. only then, a new visual pattern.
 
-- Laravel can be deployed using [Laravel Cloud](https://cloud.laravel.com/), which is the fastest way to deploy and scale production Laravel applications.
+Never invent a new visual language simply because a page does not have an exact
+existing equivalent.
 
-=== laravel/core rules ===
+When multiple implementations conflict, prefer the pattern that is:
 
-# Do Things the Laravel Way
+* used most consistently;
+* used by the closest related workflow;
+* simpler;
+* more accessible;
+* easier to reuse.
 
-- Use `php artisan make:` commands to create new files (i.e. migrations, controllers, models, etc.). You can list available Artisan commands using `php artisan list` and check their parameters with `php artisan [command] --help`.
-- If you're creating a generic PHP class, use `php artisan make:class`.
-- Pass `--no-interaction` to all Artisan commands to ensure they work without user input. You should also pass the correct `--options` to ensure correct behavior.
+Do not infer a system-wide design rule from one isolated screen.
 
-### Model Creation
+---
 
-- When creating new models, create useful factories and seeders for them too. Ask the user if they need any other things, using `php artisan make:model --help` to check the available options.
+## Mandatory UI Reconnaissance
 
-## APIs & Eloquent Resources
+Before creating or substantially modifying an interface, inspect the relevant
+existing implementation.
 
-- For APIs, default to using Eloquent API Resources and API versioning unless existing API routes do not, then you should follow existing application convention.
+At minimum, check when applicable:
 
-## URL Generation
+* the parent layout;
+* the nearest related screen;
+* reusable components in `resources/views/components/`;
+* related Livewire components;
+* `resources/css/`;
+* Tailwind and daisyUI configuration;
+* existing forms, buttons, cards, tables, alerts, badges, and navigation patterns.
 
-- When generating links to other pages, prefer named routes and the `route()` function.
+For a new page, identify the closest existing page and reuse its structural language.
 
-## Testing
+Do not start by creating new components or styling conventions.
 
-- When creating models for tests, use the factories for the models. Check if the factory has custom states that can be used before manually setting up the model.
-- Faker: Use methods such as `$this->faker->word()` or `fake()->randomDigit()`. Follow existing conventions whether to use `$this->faker` or `fake()`.
-- When creating tests, make use of `php artisan make:test [options] {name}` to create a feature test, and pass `--unit` to create a unit test. Most tests should be feature tests.
+Start by discovering what already exists.
 
-## Vite Error
+---
 
-- If you receive an "Illuminate\Foundation\ViteException: Unable to locate file in Vite manifest" error, you can run `npm run build` or ask the user to run `npm run dev` or `composer run dev`.
+## Design System
 
-=== livewire/core rules ===
+The frontend uses Tailwind CSS and daisyUI.
 
-# Livewire
+The supported application themes are:
 
-- Livewire allows you to build dynamic, reactive interfaces in PHP without writing JavaScript.
-- You can use Alpine.js for client-side interactions instead of JavaScript frameworks.
-- Keep state server-side so the UI reflects it. Validate and authorize in actions as you would in HTTP requests.
+* `corporate`
+* `business`
 
-=== pint/core rules ===
+All new UI must work correctly and remain visually coherent in both themes.
 
-# Laravel Pint Code Formatter
+Prefer semantic daisyUI theme tokens, including concepts such as:
 
-- If you have modified any PHP files, you must run `vendor/bin/pint --dirty --format agent` before finalizing changes to ensure your code matches the project's expected style.
-- Do not run `vendor/bin/pint --test --format agent`, simply run `vendor/bin/pint --format agent` to fix any formatting issues.
+* `primary`
+* `secondary`
+* `accent`
+* `neutral`
+* `base-100`
+* `base-200`
+* `base-300`
+* `base-content`
+* `info`
+* `success`
+* `warning`
+* `error`
 
-=== phpunit/core rules ===
+Do not hardcode hexadecimal, RGB, HSL, or arbitrary colors in feature UI when a
+semantic theme token can express the intent.
 
-# PHPUnit
+Raw color values belong only in intentional theme configuration or exceptional
+cases with a documented reason.
 
-- This project uses PHPUnit. Create tests with `php artisan make:test --phpunit {name}`.
-- Do not include the test suite directory in `{name}`. Use `SomeFeatureTest`, not `Feature/SomeFeatureTest`.
-- Read the `testing-best-practices` skill for guidance on coverage, naming, structure, dependency isolation, and review.
+Do not create a new color palette as part of a feature.
 
-## Running Tests
+---
 
-- Run the narrowest set of tests that covers the change. Pass a file path or `--filter=testName` to `php artisan test --compact`.
-- Rerun a test after each change to it.
-- Run `vendor/bin/phpunit` to call the test runner directly. It accepts the same file path and `--filter=testName` arguments.
+## Visual Language
 
-</laravel-boost-guidelines>
+FUNDERR should favor restrained institutional design over decorative SaaS styling.
+
+Prefer:
+
+* strong alignment;
+* predictable spacing;
+* restrained use of color;
+* clear typography hierarchy;
+* subtle surfaces;
+* meaningful grouping;
+* readable data density;
+* obvious primary actions;
+* quiet secondary actions.
+
+Avoid unless explicitly requested:
+
+* gradients used as decoration;
+* glassmorphism;
+* glow effects;
+* oversized shadows;
+* excessive animations;
+* decorative background shapes;
+* huge marketing-style headings;
+* excessive rounded containers;
+* nested cards;
+* unnecessary badges;
+* color used purely for decoration;
+* giant empty spaces;
+* dashboard decoration that carries no information.
+
+Do not make every section a card.
+
+Use whitespace, typography, alignment, and grouping before introducing another
+bordered container.
+
+---
+
+## Layout
+
+Preserve the established application shell.
+
+Without explicit authorization, do not change:
+
+* sidebar structure;
+* top navigation;
+* global content width;
+* page shell;
+* global spacing scale;
+* global typography;
+* theme definitions;
+* default component appearance.
+
+Pages belonging to the same workflow should share the same layout structure.
+
+Keep major page actions in predictable locations.
+
+Avoid arbitrary widths such as one-off pixel values when Tailwind's existing scale
+or the project's established layout can solve the problem.
+
+Do not introduce horizontal scrolling except where genuinely required by dense data,
+such as wide tables.
+
+---
+
+## Spacing
+
+Use the existing Tailwind spacing scale.
+
+Similar relationships should use similar spacing.
+
+Examples:
+
+* label → field spacing should be consistent;
+* section → section spacing should be consistent;
+* title → supporting text spacing should be consistent;
+* table controls → table spacing should be consistent.
+
+Avoid arbitrary values such as:
+
+`mt-[13px]`, `gap-[19px]`, `w-[783px]`
+
+unless there is a concrete technical reason.
+
+Visual rhythm matters more than filling every available area.
+
+---
+
+## Typography
+
+Reuse the established typography hierarchy.
+
+Do not introduce arbitrary font sizes or font weights.
+
+A typical page should establish an obvious hierarchy between:
+
+* page title;
+* optional page description;
+* section title;
+* primary content;
+* supporting content;
+* metadata.
+
+Do not bold everything.
+
+Do not use oversized headings merely to make a page appear modern.
+
+Operational applications benefit from compact, readable typography.
+
+---
+
+## Buttons & Actions
+
+A screen should normally have one visually dominant primary action.
+
+Use visual hierarchy to distinguish:
+
+* primary actions;
+* secondary actions;
+* tertiary actions;
+* destructive actions.
+
+Do not give every action the same visual emphasis.
+
+Do not invent a new button style when daisyUI or an existing application pattern
+already covers the action.
+
+Keep actions for similar workflows in consistent positions.
+
+Destructive actions must be visually distinguishable and should not sit where they
+can be triggered accidentally.
+
+Icons must not replace text when their meaning is ambiguous.
+
+Reuse the icon system already present in the project. Do not introduce another icon
+library solely for one feature.
+
+Do not use emoji as application interface icons.
+
+---
+
+## Forms
+
+Forms are a major part of FUNDERR and must prioritize speed, clarity, and error
+prevention.
+
+Maintain consistency in:
+
+* label placement;
+* input heights;
+* field spacing;
+* required indicators;
+* helper text;
+* validation errors;
+* disabled states;
+* readonly states;
+* focus states;
+* action placement.
+
+Group fields according to the user's task and domain meaning, not merely according
+to database structure.
+
+Avoid unnecessarily long single-column forms on large screens when related fields
+can be grouped clearly.
+
+Do not create dense multi-column layouts when field relationships become ambiguous.
+
+Validation errors must appear close to the field that caused them.
+
+Do not rely on placeholder text as the only field label.
+
+---
+
+## Tables & Operational Data
+
+For operational datasets, prefer tables or structured lists over grids of cards.
+
+Optimize tables for:
+
+* scanning;
+* comparison;
+* alignment;
+* useful density;
+* predictable actions;
+* readable statuses.
+
+Avoid oversized table rows and excessive vertical padding.
+
+Numeric values should be aligned consistently.
+
+Actions should not dominate the data they act upon.
+
+Use badges only when they meaningfully improve recognition of states or categories.
+
+Do not turn ordinary text values into badges merely for decoration.
+
+---
+
+## Cards
+
+Cards are containers, not the default solution for every group of content.
+
+Use a card when the content genuinely benefits from being perceived as a distinct
+surface or unit.
+
+Avoid:
+
+* card inside card inside card;
+* a card for every metric;
+* cards used only to create spacing;
+* unrelated radius and shadow combinations.
+
+If hierarchy can be achieved using headings and spacing, prefer that.
+
+---
+
+## Feedback & Application States
+
+Every meaningful asynchronous or workflow action must consider:
+
+* loading;
+* success;
+* validation failure;
+* server failure;
+* disabled;
+* empty;
+* readonly states where relevant.
+
+Empty states should explain what is missing and, when appropriate, what the user can
+do next.
+
+Do not make empty states visually louder than populated screens.
+
+Success feedback should confirm completion without interrupting the workflow
+unnecessarily.
+
+Errors should be actionable whenever possible.
+
+---
+
+## Responsive Design
+
+Responsive behavior must be intentional.
+
+Do not consider a layout responsive merely because columns eventually stack.
+
+Check:
+
+* hierarchy;
+* navigation;
+* forms;
+* tables;
+* actions;
+* overflow;
+* wrapping;
+* touch targets;
+* reading order.
+
+Preserve desktop efficiency. FUNDERR is an operational system and desktop usage
+must not be degraded merely to simplify mobile implementation.
+
+On smaller screens, prioritize the information and actions required to complete the
+current task.
+
+---
+
+## Accessibility
+
+Preserve semantic HTML.
+
+Every interactive control must have an accessible purpose.
+
+Maintain:
+
+* visible keyboard focus;
+* proper labels;
+* semantic buttons and links;
+* sufficient contrast;
+* keyboard navigation;
+* accessible names for icon-only controls;
+* clear validation feedback.
+
+Do not simulate buttons with non-interactive HTML elements when a real button is
+appropriate.
+
+Accessibility is part of implementation quality, not optional polish.
+
+---
+
+## Component Reuse
+
+Before creating a new reusable UI component:
+
+1. search for an existing component;
+2. search for an existing implementation of the same pattern;
+3. determine whether an existing component can be extended cleanly;
+4. use a daisyUI primitive when appropriate;
+5. create a new component only when the pattern is genuinely distinct or reusable.
+
+Prefer:
+
+existing project component
+→ established project pattern
+→ daisyUI primitive
+→ new reusable component
+→ one-off custom implementation
+
+Do not create nearly identical components with slightly different styling.
+
+Do not modify a global component to solve a single local problem unless the global
+change is intentionally desired across all usages.
+
+---
+
+## Preventing Visual Drift
+
+Do not change global design rules as a side effect of implementing a feature.
+
+In particular, avoid modifying these unless the task explicitly requires it:
+
+* theme configuration;
+* global CSS;
+* application layout;
+* navigation structure;
+* default radius;
+* global spacing;
+* default typography;
+* shared button styling;
+* shared input styling;
+* shared table styling.
+
+If an unrelated inconsistency is discovered, report it separately rather than
+silently redesigning it.
+
+Do not perform opportunistic UI cleanup outside the requested scope.
+
+---
+
+## Designing New Screens
+
+When no equivalent screen exists, do not freestyle immediately.
+
+First determine:
+
+1. the user's primary goal;
+2. the information hierarchy;
+3. the primary action;
+4. secondary actions;
+5. required states;
+6. the closest existing layout;
+7. reusable components;
+8. responsive behavior.
+
+Then implement the simplest interface that communicates the hierarchy clearly.
+
+A new screen should still look like FUNDERR even when its exact pattern has never
+existed before.
+
+---
+
+## Improving Existing UI
+
+When asked to make an interface "better", "cleaner", "modern", or "more professional",
+do not interpret that as permission to replace the design language.
+
+Prioritize improvements in this order:
+
+1. information hierarchy;
+2. alignment;
+3. spacing consistency;
+4. typography;
+5. density;
+6. grouping;
+7. action hierarchy;
+8. responsive behavior;
+9. feedback states;
+10. decorative styling.
+
+Prefer removing unnecessary visual elements before adding new ones.
+
+---
+
+## Visual Validation
+
+A frontend task is not complete merely because the markup compiles.
+
+After meaningful UI changes:
+
+1. build the frontend;
+2. run the application;
+3. inspect the resulting page in a real browser when browser tooling is available;
+4. inspect at least one desktop viewport;
+5. inspect a smaller viewport when the screen is expected to be responsive;
+6. verify both `corporate` and `business` themes when theme-sensitive UI was changed;
+7. compare the page with adjacent application screens;
+8. check alignment, spacing, hierarchy, overflow, and interaction states;
+9. correct visible regressions before finishing.
+
+If browser automation or screenshot tooling is available, use it for frontend work.
+
+Do not claim visual correctness solely from reading HTML or CSS.
+
+---
+
+## UI Self-Review
+
+Before completing a frontend task, verify:
+
+* Does this look like the same application as surrounding screens?
+* Did I introduce a new visual convention unnecessarily?
+* Did I duplicate an existing component?
+* Did I add arbitrary spacing, sizing, or colors?
+* Did I overuse cards, badges, borders, shadows, or rounded surfaces?
+* Is the primary action obvious?
+* Is important information easy to scan?
+* Are forms and tables consistent with related screens?
+* Does the interface work in both supported themes?
+* Did I accidentally change unrelated UI?
+* Did I inspect the rendered result when possible?
+
+If the answer reveals visual drift, fix it before considering the task complete.
+
+---
+
+## Testing Guidelines
+
+Tests use PHPUnit through Laravel's runner and generally run against in-memory SQLite.
+
+Name tests descriptively with a `Test` suffix.
+
+Use:
+
+* `tests/Feature/` for HTTP, Livewire, workflow, authentication, and authorization behavior;
+* `tests/Unit/` for isolated domain behavior.
+
+Add or update tests for changed:
+
+* business rules;
+* authentication;
+* authorization;
+* calculations;
+* workflow transitions.
+
+Check PostgreSQL, Redis, Horizon, queues, and related behavior in Docker when the
+change depends on those services.
+
+Frontend changes must also pass the frontend build.
+
+---
+
+## Commit & Pull Request Guidelines
+
+Recent commits use prefixes such as:
+
+* `feat:`
+* `fix:`
+* `refactor:`
+* `docs:`
+* `test:`
+* `chore:`
+
+Follow that convention.
+
+Keep commits focused.
+
+Commit messages and pull requests should explain the user-visible or domain impact,
+not merely list changed files.
+
+Pull requests should describe:
+
+* what changed;
+* why;
+* testing performed;
+* migration requirements;
+* configuration requirements;
+* relevant security implications.
+
+Include screenshots for meaningful UI changes when screenshot tooling is available.
+
+Link the related issue or task when one exists.
+
+---
+
+## Security & Configuration
+
+Never commit:
+
+* `.env` files;
+* credentials;
+* secrets;
+* real personal data;
+* databases;
+* private attachments.
+
+The application is still under migration and must not receive real operational data
+until authentication and access controls are fully validated.
+
+Treat rural-credit proposal data and applicant information as sensitive.
+
+Do not expose private files through public storage merely to simplify implementation.
+
+---
+
+## Scope Discipline
+
+Implement the requested change completely, but do not reinterpret unrelated parts of
+the product.
+
+Before changing shared architecture, global styles, layouts, or design-system
+primitives, determine whether the requested feature actually requires that change.
+
+Prefer the smallest coherent change that solves the product problem.
+
+When a larger redesign or refactor would be beneficial but is outside scope, mention
+it separately instead of silently including it.
