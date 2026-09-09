@@ -84,4 +84,5 @@ Route::middleware(['auth', 'throttle:sensitive-read'])->prefix('propostas')->nam
     Route::get('/nova', [ProposalController::class, 'create'])->name('create');
     Route::get('/{proposal}/etapas/{step}', [ProposalController::class, 'edit'])->name('edit');
     Route::get('/{proposal}/imprimir/{document}', [ProposalController::class, 'print'])->name('print');
+    Route::get('/{proposal}/documentos/{document}/download', [ProposalController::class, 'download'])->name('documents.download');
 });

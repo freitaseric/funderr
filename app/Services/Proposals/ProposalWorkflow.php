@@ -75,6 +75,7 @@ class ProposalWorkflow
                 'items.*.quantity' => $quantity, 'items.*.unit_value' => $money,
                 ...collect(range(2, 7))->mapWithKeys(fn (int $year): array => ['items.*.year_'.$year => ['nullable', 'numeric', 'min:0', 'max:999999999.99', 'decimal:0,2']])->all(),
             ],
+            ProposalStep::Documents => [],
             ProposalStep::Review => [],
         };
     }
@@ -196,6 +197,7 @@ class ProposalWorkflow
             ProposalStep::CashFlow => [
                 'items.*.description' => 'a descrição do item do fluxo de caixa', 'items.*.unit' => 'a unidade do item do fluxo de caixa', 'items.*.quantity' => 'a quantidade do item do fluxo de caixa', 'items.*.unit_value' => 'o valor unitário do item do fluxo de caixa',
             ],
+            ProposalStep::Documents => [],
             ProposalStep::Review => [],
         };
 
@@ -279,7 +281,7 @@ class ProposalWorkflow
             })],
             ProposalStep::Identification => [...($proposal->identification?->toArray() ?? []), 'purpose' => $proposal->purpose, 'jobs' => $proposal->jobs->toArray(), 'sources' => $proposal->useSources->toArray()],
             ProposalStep::CashFlow => ['items' => $proposal->cashFlowItems->toArray()],
-            ProposalStep::Review => [],
+            ProposalStep::Documents, ProposalStep::Review => [],
         };
     }
 
@@ -301,31 +303,38 @@ class ProposalWorkflow
             }
         }
 
+        $documents = $proposal->documents()->where('source_revision', $proposal->revision)->where('status', 'READY')->get();
+        if (! $documents->contains(fn ($document): bool => $document->type->value === 'ATER_CONTRACT')) {
+            $pending[ProposalStep::Documents->value][] = 'Gere o contrato ATER da revisão atual.';
+        }
+        if (! $documents->contains(fn ($document): bool => $document->type->value === 'ATER_CONTRACT_SIGNED')) {
+            $pending[ProposalStep::Documents->value][] = 'Anexe o contrato ATER assinado da revisão atual.';
+        }
+
         return $pending;
     }
 
-    public function transition(Proposal $proposal, int $revision, ProposalStatus $target, ?string $reason): Proposal
+    public function transition(Proposal $proposal, int $revision, ProposalStatus $target, ?string $reason, ?array $metadata = null): Proposal
     {
-        return DB::transaction(function () use ($proposal, $revision, $target, $reason): Proposal {
+        return DB::transaction(function () use ($proposal, $revision, $target, $reason, $metadata): Proposal {
             $locked = Proposal::lockForUpdate()->findOrFail($proposal->id);
             $this->checkRevision($locked, $revision);
             Gate::authorize($target === ProposalStatus::InReview ? 'update' : 'process', $locked);
             $allowed = match ($locked->status) {
                 ProposalStatus::Draft, ProposalStatus::Returned => [ProposalStatus::InReview],
-                ProposalStatus::InReview => [ProposalStatus::Returned, ProposalStatus::Released],
-                ProposalStatus::Released => [ProposalStatus::Sent, ProposalStatus::Returned],
-                ProposalStatus::Sent => [ProposalStatus::BankReturned],
-                ProposalStatus::BankReturned => [ProposalStatus::Returned, ProposalStatus::Completed],
-                ProposalStatus::Completed => [],
+                ProposalStatus::InReview => [ProposalStatus::Returned],
+                ProposalStatus::ReadyForSend => [ProposalStatus::Returned, ProposalStatus::Sent],
+                ProposalStatus::Sent => [ProposalStatus::Returned, ProposalStatus::Released],
+                ProposalStatus::Released => [],
             };
             if (! in_array($target, $allowed, true)) {
                 throw ValidationException::withMessages(['workflow' => 'Esta transição não é permitida no status atual.']);
             }
-            if (in_array($target, [ProposalStatus::InReview, ProposalStatus::Released], true) && $this->pending($locked) !== []) {
+            if ($target === ProposalStatus::InReview && $this->pending($locked) !== []) {
                 throw ValidationException::withMessages(['workflow' => 'Resolva as pendências antes de encaminhar ou liberar a proposta.']);
             }
-            if (in_array($target, [ProposalStatus::Returned, ProposalStatus::Sent, ProposalStatus::BankReturned], true) && blank($reason)) {
-                throw ValidationException::withMessages(['reason' => 'Registre o motivo, comprovante do envio manual ou resposta recebida.']);
+            if ($target === ProposalStatus::Returned && blank($reason)) {
+                throw ValidationException::withMessages(['reason' => 'A justificativa da devolução é obrigatória.']);
             }
             Validator::make(['reason' => $reason], ['reason' => ['nullable', 'string', 'max:10000']])->validate();
             $locked->history()->create([
@@ -333,10 +342,33 @@ class ProposalWorkflow
                 'from_status' => $locked->status,
                 'to_status' => $target,
                 'reason' => $reason,
+                'metadata' => $metadata,
                 'ip_address' => request()->ip(),
                 'user_agent' => request()->userAgent(),
             ]);
-            $locked->forceFill(['status' => $target, 'current_step' => ProposalStep::Review, 'revision' => $revision + 1])->save();
+            $locked->forceFill(['status' => $target, 'current_step' => ProposalStep::Review])->save();
+
+            return $locked;
+        });
+    }
+
+    public function markDossierReady(Proposal $proposal, int $revision, int $userId, ?string $ipAddress = null, ?string $userAgent = null): Proposal
+    {
+        return DB::transaction(function () use ($proposal, $revision, $userId, $ipAddress, $userAgent): Proposal {
+            $locked = Proposal::lockForUpdate()->findOrFail($proposal->id);
+            if ($locked->revision !== $revision || $locked->status !== ProposalStatus::InReview) {
+                return $locked;
+            }
+            $locked->history()->create([
+                'user_id' => $userId,
+                'from_status' => $locked->status,
+                'to_status' => ProposalStatus::ReadyForSend,
+                'reason' => 'Dossier gerado com sucesso.',
+                'metadata' => ['source_revision' => $revision],
+                'ip_address' => $ipAddress,
+                'user_agent' => $userAgent,
+            ]);
+            $locked->forceFill(['status' => ProposalStatus::ReadyForSend, 'current_step' => ProposalStep::Review])->save();
 
             return $locked;
         });

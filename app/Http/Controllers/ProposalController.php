@@ -4,10 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Enums\ProposalStep;
 use App\Models\Proposal;
+use App\Models\ProposalDocument;
 use App\Services\Proposals\ProposalDocuments;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class ProposalController extends Controller
@@ -40,7 +43,7 @@ class ProposalController extends Controller
         $livewireComponent = match ($stage) {
             ProposalStep::Initial => 'proposals.create', ProposalStep::Patrimony => 'proposals.patrimony',
             ProposalStep::Financing => 'proposals.financing', ProposalStep::Identification => 'proposals.identification',
-            ProposalStep::CashFlow => 'proposals.cash-flow', ProposalStep::Review => 'proposals.review',
+            ProposalStep::CashFlow => 'proposals.cash-flow', ProposalStep::Documents => 'proposals.documents', ProposalStep::Review => 'proposals.review',
         };
 
         return view('proposals.edit', compact('proposal', 'livewireComponent'));
@@ -51,5 +54,14 @@ class ProposalController extends Controller
         Gate::authorize('view', $proposal);
 
         return $documents->render($proposal, $document);
+    }
+
+    public function download(Proposal $proposal, ProposalDocument $document): Response
+    {
+        Gate::authorize('view', $proposal);
+        abort_unless($document->proposal_id === $proposal->id, 404);
+        abort_unless($document->status->value === 'READY' && Storage::disk($document->disk)->exists($document->path), 404);
+
+        return Storage::disk($document->disk)->download($document->path, $document->original_name ?: basename($document->path), ['Content-Type' => $document->mime_type ?: 'application/octet-stream']);
     }
 }

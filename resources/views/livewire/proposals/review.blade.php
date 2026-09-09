@@ -54,7 +54,13 @@
                 <a class="btn btn-outline btn-sm" target="_blank" href="{{ route('proposals.print', [$this->proposal, $document]) }}">{{ $title }}</a>
             @endforeach
         </div>
-        <p class="text-sm text-base-content/70">O contrato permanece como ponto de extensão: o texto contratual definitivo ainda precisa ser fornecido pela instituição.</p>
+        @php($dossier = $this->proposal->documents()->where('type', \App\Enums\ProposalDocumentType::Dossier)->where('source_revision', $this->proposal->revision)->latest('id')->first())
+        <div class="flex flex-wrap items-center gap-3 border-t border-base-300 pt-4" wire:poll.5s>
+            <span>Dossier: <strong>{{ $dossier?->status->value ?? 'não gerado' }}</strong></span>
+            @if($dossier?->status === \App\Enums\ProposalDocumentStatus::Ready)
+                <a class="btn btn-primary btn-sm" target="_blank" href="{{ route('proposals.documents.download', [$this->proposal, $dossier]) }}">Baixar / imprimir dossier</a>
+            @endif
+        </div>
     </div></section>
 
     <section class="card bg-base-100"><div class="card-body gap-4">
@@ -71,7 +77,10 @@
     @if ($this->availableTransitions !== [])
         <section class="card bg-base-100"><div class="card-body gap-4">
             <h2 class="card-title">Tramitação</h2>
-            <p class="text-sm">Status atual: <strong>{{ $this->proposal->status->label() }}</strong>. Escolha a próxima ação; o motivo é exigido para devoluções, envios manuais e retornos do banco.</p>
+            <p class="text-sm">Status atual: <strong>{{ $this->proposal->status->label() }}</strong>. O envio ao banco é sempre manual e registrado pelo Núcleo.</p>
+            @if($this->proposal->status === \App\Enums\ProposalStatus::ReadyForSend)
+                <label class="fieldset max-w-sm"><span class="label">Forma de envio</span><select class="select select-bordered" wire:model="dispatchMethod"><option value="">Selecione</option><option value="WHATSAPP">WhatsApp</option><option value="PRESENCIAL">Presencialmente</option></select></label>
+            @endif
             <x-proposal-field model="reason" label="Motivo, comprovante de envio ou resposta recebida" type="textarea" hint="Preencha quando a ação solicitar justificativa." />
             <div class="flex flex-wrap gap-3">
                     @foreach ($this->availableTransitions as $status)

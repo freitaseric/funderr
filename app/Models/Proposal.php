@@ -88,6 +88,11 @@ class Proposal extends Model
         return $this->hasMany(ProposalStatusHistory::class, 'proposal_id');
     }
 
+    public function documents(): HasMany
+    {
+        return $this->hasMany(ProposalDocument::class);
+    }
+
     public function scopeVisibleTo(Builder $query, User $user): Builder
     {
         if ($user->isAdministrator() || $user->isCore()) {

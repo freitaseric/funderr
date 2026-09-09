@@ -7,10 +7,9 @@ enum ProposalStatus: string
     case Draft = 'RASCUNHO';
     case InReview = 'EM_REVISAO';
     case Returned = 'DEVOLVIDA';
-    case Released = 'LIBERADA';
+    case ReadyForSend = 'PRONTA_PARA_ENVIO';
     case Sent = 'ENVIADA';
-    case BankReturned = 'RETORNADA';
-    case Completed = 'CONCLUIDA';
+    case Released = 'LIBERADA';
 
     public function label(): string
     {
@@ -18,10 +17,9 @@ enum ProposalStatus: string
             self::Draft => 'Rascunho',
             self::InReview => 'Em revisão',
             self::Returned => 'Devolvida',
-            self::Released => 'Liberada',
+            self::ReadyForSend => 'Pronta para envio',
             self::Sent => 'Enviada',
-            self::BankReturned => 'Retornada pelo banco',
-            self::Completed => 'Concluída',
+            self::Released => 'Liberada',
         };
     }
 

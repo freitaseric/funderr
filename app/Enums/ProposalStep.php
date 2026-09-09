@@ -9,6 +9,7 @@ enum ProposalStep: string
     case Financing = 'FINANCING';
     case Identification = 'IDENTIFICATION';
     case CashFlow = 'CASH_FLOW';
+    case Documents = 'DOCUMENTS';
     case Review = 'REVIEW';
 
     public function label(): string
@@ -19,7 +20,8 @@ enum ProposalStep: string
             self::Financing => 'Financiamento',
             self::Identification => 'Identificação',
             self::CashFlow => 'Fluxo de caixa',
-            self::Review => 'Revisão / documentos',
+            self::Documents => 'Contrato e documentação',
+            self::Review => 'Revisão',
         };
     }
 
@@ -30,6 +32,6 @@ enum ProposalStep: string
 
     public function next(): self
     {
-        return self::cases()[min($this->position() + 1, 5)];
+        return self::cases()[min($this->position() + 1, count(self::cases()) - 1)];
     }
 }
