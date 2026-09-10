@@ -18,7 +18,7 @@ class BeneficiaryPolicy
             return false;
         }
 
-        return $user->isAdministrator() || $user->isCore() || $beneficiary->created_by === $user->id;
+        return $user->isAdministrator() || $user->isCore() || $beneficiary->created_by === null || $beneficiary->created_by === $user->id;
     }
 
     public function create(User $user): bool

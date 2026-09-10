@@ -12,6 +12,7 @@ use App\Enums\ProposalStep;
 use App\Enums\UserRole;
 use App\Jobs\GenerateAterContract;
 use App\Jobs\GenerateProposalDossier;
+use App\Livewire\Proposals\Documents;
 use App\Models\Beneficiary;
 use App\Models\Property;
 use App\Models\Proposal;
@@ -20,8 +21,10 @@ use App\Services\Proposals\PdfDocument;
 use App\Services\Proposals\ProposalDossierPdf;
 use App\Services\Proposals\ProposalWorkflow;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class ProposalDocumentsWorkflowTest extends TestCase
@@ -55,11 +58,49 @@ class ProposalDocumentsWorkflowTest extends TestCase
         Storage::disk('local')->assertExists($contract->path);
         $this->assertStringStartsWith('%PDF-', Storage::disk('local')->get($contract->path));
 
+        $this->actingAs($core)
+            ->get(route('proposals.documents.download', [$proposal, $contract]))
+            ->assertOk()
+            ->assertDownload('contract.pdf');
+
+        $admin = User::factory()->create(['role' => UserRole::Administrator, 'must_change_password' => false]);
+        $component = Livewire::actingAs($admin)
+            ->test(Documents::class, ['proposal' => $proposal])
+            ->set('file', UploadedFile::fake()->image('contrato-assinado.png', 10, 10));
+        $component->call('uploadDocument');
+        $component->assertHasNoErrors();
+
+        $this->assertDatabaseHas('proposal_documents', [
+            'proposal_id' => $proposal->id,
+            'type' => ProposalDocumentType::AterContractSigned->value,
+            'status' => ProposalDocumentStatus::Ready->value,
+            'original_name' => 'contrato-assinado.png',
+        ]);
+
+        $proposal->update([
+            'current_step' => ProposalStep::Documents,
+            'completed_steps' => [
+                ProposalStep::Initial->value,
+                ProposalStep::Patrimony->value,
+                ProposalStep::Financing->value,
+                ProposalStep::Identification->value,
+                ProposalStep::CashFlow->value,
+            ],
+        ]);
+        $component->call('finish')->assertHasNoErrors();
+
+        $this->assertDatabaseHas('proposal_documents', [
+            'proposal_id' => $proposal->id,
+            'type' => ProposalDocumentType::AterContractSigned->value,
+            'source_revision' => 5,
+            'status' => ProposalDocumentStatus::Ready->value,
+        ]);
+
         $dossier = $proposal->documents()->create([
             'type' => ProposalDocumentType::Dossier, 'status' => ProposalDocumentStatus::Pending, 'disk' => 'local',
-            'path' => 'proposals/1/dossier.pdf', 'source_revision' => 4, 'created_by' => $core->id,
+            'path' => 'proposals/1/dossier.pdf', 'source_revision' => 5, 'created_by' => $core->id,
         ]);
-        (new GenerateProposalDossier($proposal->id, 4, $dossier->id))->handle(app(ProposalDossierPdf::class));
+        (new GenerateProposalDossier($proposal->id, 5, $dossier->id))->handle(app(ProposalDossierPdf::class));
 
         $this->assertSame(ProposalStatus::ReadyForSend, $proposal->fresh()->status);
         $this->assertSame(ProposalDocumentStatus::Ready, $dossier->fresh()->status);

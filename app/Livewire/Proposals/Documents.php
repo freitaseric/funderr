@@ -20,7 +20,7 @@ class Documents extends StepEditor
 
     public $file;
 
-    public string $type = 'OTHER_PRODUCER_DOCUMENT';
+    public string $type = 'ATER_CONTRACT_SIGNED';
 
     public function step(): ProposalStep
     {
@@ -52,7 +52,7 @@ class Documents extends StepEditor
         session()->flash('success', 'Contrato enviado para geração.');
     }
 
-    public function upload(): void
+    public function uploadDocument(): void
     {
         Gate::authorize('update', $this->proposal);
         $this->validate([
@@ -82,10 +82,18 @@ class Documents extends StepEditor
     public function finish(): void
     {
         Gate::authorize('update', $this->proposal);
-        $current = $this->proposal->documents()->where('source_revision', $this->revision)->where('status', ProposalDocumentStatus::Ready);
-        abort_unless($current->where('type', ProposalDocumentType::AterContract)->exists(), 422, 'Gere o contrato ATER atual.');
-        abort_unless($current->where('type', ProposalDocumentType::AterContractSigned)->exists(), 422, 'Anexe o contrato ATER assinado.');
-        $this->persist(true, fn (Proposal $proposal): null => null);
+        $revision = $this->revision;
+        $current = $this->proposal->documents()->where('source_revision', $revision)->where('status', ProposalDocumentStatus::Ready);
+        abort_unless((clone $current)->where('type', ProposalDocumentType::AterContract)->exists(), 422, 'Gere o contrato ATER atual.');
+        abort_unless((clone $current)->where('type', ProposalDocumentType::AterContractSigned)->exists(), 422, 'Anexe o contrato ATER assinado.');
+        $this->persist(true, function (Proposal $proposal) use ($revision): null {
+            $proposal->documents()
+                ->where('source_revision', $revision)
+                ->where('status', ProposalDocumentStatus::Ready)
+                ->update(['source_revision' => $revision + 1]);
+
+            return null;
+        });
     }
 
     public function render(): View

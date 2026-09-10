@@ -8,10 +8,10 @@ use App\Models\ProposalDocument;
 use App\Services\Proposals\ProposalDocuments;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ProposalController extends Controller
 {
@@ -56,7 +56,7 @@ class ProposalController extends Controller
         return $documents->render($proposal, $document);
     }
 
-    public function download(Proposal $proposal, ProposalDocument $document): Response
+    public function download(Proposal $proposal, ProposalDocument $document): StreamedResponse
     {
         Gate::authorize('view', $proposal);
         abort_unless($document->proposal_id === $proposal->id, 404);

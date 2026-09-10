@@ -58,6 +58,18 @@ class CpfAuthenticationTest extends TestCase
         $this->get('/home')->assertOk()->assertSee($user->name);
     }
 
+    public function test_login_nao_retorna_para_a_tela_de_login_quando_ela_e_a_intencao(): void
+    {
+        $user = User::factory()->create(['must_change_password' => false]);
+
+        $this->withSession(['url.intended' => '/login'])
+            ->post('/login', [
+                'cpf' => $user->cpf,
+                'password' => 'password',
+            ])
+            ->assertRedirect('/home');
+    }
+
     public function test_pagina_inicial_escapa_nome_do_usuario(): void
     {
         $user = User::factory()->create([

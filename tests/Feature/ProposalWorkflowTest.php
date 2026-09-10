@@ -83,6 +83,18 @@ class ProposalWorkflowTest extends TestCase
             ->assertOk();
     }
 
+    public function test_tecnico_pode_selecionar_cadastros_legados_sem_proprietario(): void
+    {
+        $beneficiary = Beneficiary::factory()->create(['created_by' => null]);
+        $property = $this->property($beneficiary);
+        $technician = $this->user(UserRole::Technician);
+
+        Livewire::actingAs($technician)->test(Create::class)
+            ->assertSee($beneficiary->name)
+            ->set('data.beneficiary_id', (string) $beneficiary->id)
+            ->assertSee($property->denomination);
+    }
+
     public function test_rejeita_propriedade_de_outro_beneficiario(): void
     {
         $beneficiary = Beneficiary::factory()->create();

@@ -42,7 +42,9 @@ class Property extends Model
             return $query;
         }
 
-        return $query->where('created_by', $user->id);
+        return $query->where(function (Builder $query) use ($user): void {
+            $query->where('created_by', $user->id)->orWhereNull('created_by');
+        });
     }
 
     public static function calculateAvailableArea(float $totalArea): float

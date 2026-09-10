@@ -18,7 +18,7 @@ class PropertyPolicy
             return false;
         }
 
-        return $user->isAdministrator() || $user->isCore() || $property->created_by === $user->id;
+        return $user->isAdministrator() || $user->isCore() || $property->created_by === null || $property->created_by === $user->id;
     }
 
     public function create(User $user): bool

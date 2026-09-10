@@ -115,14 +115,19 @@
                         Perfil
                     </label>
 
-                    <x-searchable-select
+                    <select
                         id="role"
                         name="role"
-                        :value="old('role')"
-                        :options="collect($roles)->map(fn ($role) => ['value' => $role->value, 'label' => $role->label()])->all()"
-                        placeholder="Selecione"
-                        search-placeholder="Pesquisar perfil"
-                    />
+                        class="select select-bordered w-full"
+                        required
+                    >
+                        <option value="">Selecione</option>
+                        @foreach ($roles as $role)
+                            <option value="{{ $role->value }}" @selected(old('role') === $role->value)>
+                                {{ $role->label() }}
+                            </option>
+                        @endforeach
+                    </select>
                 </div>
 
                 <div class="card-actions justify-end pt-3">
